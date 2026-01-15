@@ -115,15 +115,15 @@ export default function CheckoutPage() {
 						
 						<div className="success-details">
 							<div className="success-item">
-								<span className="success-label">Firma:</span>
+								<span className="success-label">Firma: </span>
 								<span className="success-value">{pendingOrg.companyName}</span>
 							</div>
 							<div className="success-item">
-								<span className="success-label">Plan:</span>
+								<span className="success-label">Plan: </span>
 								<span className="success-value">{pendingOrg.plan.name}</span>
 							</div>
 							<div className="success-item">
-								<span className="success-label">Okres próbny:</span>
+								<span className="success-label">Okres próbny: </span>
 								<span className="success-value">3 miesiące gratis 🎁</span>
 							</div>
 						</div>
@@ -157,24 +157,24 @@ export default function CheckoutPage() {
 						<div className="checkout-summary">
 							<h3>📋 Szczegóły organizacji</h3>
 							<div className="summary-item">
-								<span className="summary-label">Nazwa firmy:</span>
+								<span className="summary-label">Nazwa firmy: </span>
 								<span className="summary-value">{pendingOrg.companyName}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Plan:</span>
+								<span className="summary-label">Plan: </span>
 								<span className="summary-value">{pendingOrg.plan.name}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Cena:</span>
+								<span className="summary-label">Cena: </span>
 								<span className="summary-value">{pendingOrg.plan.price} zł/{pendingOrg.plan.period}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Okres próbny:</span>
+								<span className="summary-label">Okres próbny: </span>
 								<span className="summary-value trial-highlight">3 miesiące gratis 🎁</span>
 							</div>
 							<div className="summary-divider"></div>
 							<div className="summary-item summary-total">
-								<span className="summary-label">Do zapłaty dzisiaj:</span>
+								<span className="summary-label">Do zapłaty dzisiaj: </span>
 								<span className="summary-value">0 zł</span>
 							</div>
 							<div className="summary-note">

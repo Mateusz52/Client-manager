@@ -329,3 +329,112 @@
 		font-size: 14px;
 	}
 }
+
+/* ============================================
+   SUCCESS SCREEN
+   ============================================ */
+
+.checkout-success {
+	text-align: center;
+	padding: 40px 20px;
+}
+
+.success-icon {
+	font-size: 80px;
+	margin-bottom: 24px;
+	animation: successPop 0.5s ease-out;
+}
+
+@keyframes successPop {
+	0% {
+		transform: scale(0);
+		opacity: 0;
+	}
+	50% {
+		transform: scale(1.2);
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+.checkout-success h2 {
+	font-size: 32px;
+	font-weight: 800;
+	color: #243c4c;
+	margin: 0 0 16px 0;
+}
+
+.checkout-success > p {
+	font-size: 16px;
+	color: #6c757d;
+	line-height: 1.6;
+	margin: 0 0 32px 0;
+}
+
+.success-details {
+	background: linear-gradient(135deg, rgba(148, 193, 30, 0.1) 0%, rgba(102, 126, 234, 0.1) 100%);
+	border: 2px solid #94c11e;
+	border-radius: 16px;
+	padding: 32px;
+	margin-bottom: 32px;
+}
+
+.success-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 0;
+	border-bottom: 1px solid rgba(148, 193, 30, 0.2);
+}
+
+.success-item:last-child {
+	border-bottom: none;
+}
+
+.success-label {
+	font-size: 16px;
+	color: #6c757d;
+	font-weight: 600;
+}
+
+.success-value {
+	font-size: 18px;
+	color: #243c4c;
+	font-weight: 700;
+}
+
+/* Responsive dla success screen */
+@media (max-width: 768px) {
+	.success-icon {
+		font-size: 60px;
+	}
+
+	.checkout-success h2 {
+		font-size: 24px;
+	}
+
+	.checkout-success > p {
+		font-size: 14px;
+	}
+
+	.success-details {
+		padding: 24px 20px;
+	}
+
+	.success-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+		padding: 12px 0;
+	}
+
+	.success-label {
+		font-size: 14px;
+	}
+
+	.success-value {
+		font-size: 16px;
+	}
+}

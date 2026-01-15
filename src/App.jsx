@@ -5,6 +5,7 @@ import LandingPage from './LandingPage'
 import Login from './Login'
 import Register from './Register'
 import Dashboard from './Dashboard'
+import Settings from './Settings'
 import SelectPlanPage from './SelectPlanPage'
 import PricingPage from './PricingPage'
 import CheckoutPage from './CheckoutPage'
@@ -217,6 +218,12 @@ function App() {
 				
 				{/* Landing - osobna route */}
 				<Route path="/landing" element={<LandingPage />} />
+				
+				{/* Settings - tylko dla zalogowanych */}
+				<Route 
+					path="/settings" 
+					element={currentUser ? <Settings /> : <Navigate to="/login" />} 
+				/>
 				
 				{/* Auth */}
 				<Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />

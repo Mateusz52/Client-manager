@@ -58,112 +58,82 @@ export default function SelectPlanPage() {
 
 				<div className="select-plan-options">
 					{/* OPCJA 1: KUP PLAN */}
-					<div className="plan-option plan-option-buy">
-						<div className="plan-option-icon">💳</div>
-						<h2>Kup własny plan</h2>
-						<p>
-							Załóż własną organizację i zarządzaj swoim zespołem. 
-							<strong>Pierwsze 3 miesiące za darmo!</strong>
-						</p>
-						<ul className="plan-option-features">
-							<li>✅ Nielimitowane zamówienia</li>
-							<li>✅ Własne produkty</li>
-							<li>✅ Zapraszanie pracowników</li>
-							<li>✅ Zaawansowane statystyki</li>
-							<li>✅ Export PDF</li>
-							<li>🎁 <strong>3 miesiące gratis!</strong></li>
+					<div className="plan-option">
+						<div className="option-icon">🚀</div>
+						<h2>Rozpocznij swoją firmę</h2>
+						<p>Kup plan i zarządzaj swoją produkcją palet</p>
+						<ul className="option-benefits">
+							<li>✓ Pełna kontrola nad organizacją</li>
+							<li>✓ Zapraszaj członków zespołu</li>
+							<li>✓ 3 miesiące gratis</li>
+							<li>✓ Nielimitowane zamówienia</li>
 						</ul>
-						<button onClick={handleBuyPlan} className="btn-select-plan btn-primary">
-							Wybierz plan
+						<button onClick={handleBuyPlan} className="btn-option btn-primary">
+							💳 Kup plan
 						</button>
 					</div>
 
 					{/* OPCJA 2: DOŁĄCZ DO ZESPOŁU */}
-					<div className="plan-option plan-option-join">
-						<div className="plan-option-icon">👥</div>
+					<div className="plan-option">
+						<div className="option-icon">👥</div>
 						<h2>Dołącz do zespołu</h2>
-						<p>
-							Masz kod zaproszenia od właściciela firmy? 
-							Wpisz go poniżej i dołącz do zespołu.
-						</p>
-						<ul className="plan-option-features">
-							<li>✅ Dostęp do firmowego panelu</li>
-							<li>✅ Uprawnienia przydzielone przez właściciela</li>
-							<li>✅ Współpraca w czasie rzeczywistym</li>
-							<li>✅ Bez kosztów subskrypcji</li>
+						<p>Masz kod zaproszenia? Dołącz do istniejącej organizacji</p>
+						<ul className="option-benefits">
+							<li>✓ Pracuj w zespole</li>
+							<li>✓ Dostęp do zamówień firmy</li>
+							<li>✓ Bez dodatkowych kosztów</li>
+							<li>✓ Uprawnienia nadane przez właściciela</li>
 						</ul>
-						<button onClick={() => setShowJoinModal(true)} className="btn-select-plan btn-secondary">
-							Mam kod zaproszenia
+						<button onClick={() => setShowJoinModal(true)} className="btn-option btn-secondary">
+							🔑 Użyj kodu
 						</button>
 					</div>
 				</div>
 
-				<div className="select-plan-info">
-					<p>💡 <strong>Możesz wybrać obie opcje!</strong></p>
-					<p>
-						Kup własny plan dla swojej firmy i jednocześnie dołącz do innej organizacji jako pracownik.
-						Łatwo przełączaj się między różnymi firmami.
-					</p>
+				<div className="select-plan-footer">
+					<p>Masz pytania? <a href="mailto:kontakt@clientmanager.pl">Skontaktuj się z nami</a></p>
 				</div>
 			</div>
 
-			{/* MODAL DOŁĄCZANIA */}
+			{/* Modal z kodem zaproszenia */}
 			{showJoinModal && (
 				<div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
-					<div className="modal-card" onClick={(e) => e.stopPropagation()}>
-						<h2>👥 Dołącz do zespołu</h2>
-						<p style={{ color: '#6c757d', fontSize: '14px', marginBottom: '20px' }}>
-							Wpisz 6-znakowy kod zaproszenia otrzymany od właściciela firmy
-						</p>
-
+					<div className="modal-box" onClick={(e) => e.stopPropagation()}>
+						<h2>Dołącz do zespołu</h2>
+						<p>Wpisz kod zaproszenia otrzymany od właściciela organizacji</p>
+						
 						<form onSubmit={handleJoinTeam}>
 							<input
 								type="text"
-								placeholder="Kod zaproszenia (np. XY4K9P)"
+								placeholder="np. ABC123XYZ"
 								value={joinCode}
 								onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-								className="modal-input"
-								maxLength={6}
-								style={{ 
-									textTransform: 'uppercase',
-									letterSpacing: '3px',
-									fontWeight: '700',
-									fontSize: '20px',
-									textAlign: 'center'
-								}}
-								required
+								className="join-code-input"
 								autoFocus
+								maxLength={9}
+								pattern="[A-Z0-9]{9}"
+								required
 							/>
 
 							{joinError && (
-								<div style={{ 
-									padding: '12px', 
-									background: '#fee', 
-									color: '#c00', 
-									borderRadius: '8px', 
-									fontSize: '14px',
-									marginTop: '12px'
-								}}>
-									{joinError}
+								<div className="join-error">
+									⚠️ {joinError}
 								</div>
 							)}
 
-							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+							<div className="modal-actions">
 								<button 
-									type="submit" 
-									className="modal-btn-primary"
+									type="button"
+									onClick={() => setShowJoinModal(false)}
+									className="btn-modal btn-cancel"
 									disabled={joinLoading}>
-									{joinLoading ? 'Dołączanie...' : 'Dołącz do zespołu'}
+									Anuluj
 								</button>
 								<button 
-									type="button" 
-									className="modal-btn-secondary"
-									onClick={() => {
-										setShowJoinModal(false)
-										setJoinCode('')
-										setJoinError('')
-									}}>
-									Anuluj
+									type="submit"
+									className="btn-modal btn-confirm"
+									disabled={joinLoading || !joinCode.trim()}>
+									{joinLoading ? 'Dołączam...' : 'Dołącz'}
 								</button>
 							</div>
 						</form>

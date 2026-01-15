@@ -85,13 +85,11 @@ export default function PricingPage() {
 			return
 		}
 
-		// Zapisz dane do localStorage
 		localStorage.setItem('pendingOrganization', JSON.stringify({
 			companyName: companyName.trim(),
 			plan: selectedPlan
 		}))
 
-		// Przekieruj do checkout (mock payment)
 		navigate('/checkout')
 	}
 

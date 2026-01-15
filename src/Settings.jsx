@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { db } from './firebase'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { showToast, showConfirm } from './simpleAlerts'
 import './Settings.css'
 
 export default function Settings() {
@@ -55,19 +56,26 @@ export default function Settings() {
 				updatedAt: new Date().toISOString()
 			})
 
-			alert('✅ Dane zapisane!')
+			showToast('Dane zapisane pomyślnie!', 'success')
 			setSaving(false)
 		} catch (error) {
 			console.error('Błąd zapisu:', error)
-			alert('❌ Błąd zapisu danych')
+			showToast('Błąd zapisu danych', 'error')
 			setSaving(false)
 		}
 	}
 
 	const handleCancelSubscription = async () => {
-		if (!confirm('Czy na pewno chcesz anulować subskrypcję?\n\nDostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.')) {
-			return
-		}
+		const confirmed = await showConfirm(
+			'Czy na pewno chcesz anulować subskrypcję?\n\nDostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.',
+			{
+				confirmText: 'Anuluj subskrypcję',
+				cancelText: 'Nie, zostań',
+				icon: '⚠️'
+			}
+		)
+
+		if (!confirmed) return
 
 		try {
 			const orgRef = doc(db, 'organizations', userProfile.currentOrganizationId)
@@ -76,12 +84,43 @@ export default function Settings() {
 				updatedAt: new Date().toISOString()
 			})
 
-			alert('✅ Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego.')
+			showToast('Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego', 'success')
 			loadOrgData()
 		} catch (error) {
 			console.error('Błąd anulowania:', error)
-			alert('❌ Błąd anulowania subskrypcji')
+			showToast('Błąd anulowania subskrypcji', 'error')
 		}
+	}
+
+	const handleDeleteAccount = async () => {
+		const confirmed = await showConfirm(
+			'Czy na pewno chcesz usunąć swoje konto?\n\nTa akcja jest NIEODWRACALNA i spowoduje trwałe usunięcie wszystkich Twoich danych.',
+			{
+				confirmText: 'Usuń konto',
+				cancelText: 'Anuluj',
+				icon: '🗑️'
+			}
+		)
+
+		if (confirmed) {
+			showToast('Funkcja wkrótce dostępna', 'info')
+		}
+	}
+
+	const handleChangePlan = async () => {
+		showToast('Funkcja zmiany planu będzie wkrótce dostępna', 'info')
+	}
+
+	const handleChangePassword = async () => {
+		showToast('Funkcja zmiany hasła będzie wkrótce dostępna', 'info')
+	}
+
+	const handleEnable2FA = async () => {
+		showToast('Funkcja 2FA będzie wkrótce dostępna', 'info')
+	}
+
+	const handleShowSessions = async () => {
+		showToast('Funkcja zarządzania sesjami będzie wkrótce dostępna', 'info')
 	}
 
 	if (loading) {
@@ -150,7 +189,7 @@ export default function Settings() {
 						<div className="danger-zone">
 							<h3>Strefa niebezpieczna</h3>
 							<p>Usuń swoje konto na zawsze. Ta akcja jest nieodwracalna.</p>
-							<button className="btn-danger" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-danger" onClick={handleDeleteAccount}>
 								🗑️ Usuń konto
 							</button>
 						</div>
@@ -211,7 +250,7 @@ export default function Settings() {
 									</div>
 
 									<div className="subscription-actions">
-										<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+										<button className="btn-secondary" onClick={handleChangePlan}>
 											📝 Zmień plan
 										</button>
 										{!orgData.subscription.cancelAtPeriodEnd && (
@@ -251,7 +290,7 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Zmiana hasła</h3>
 							<p>Zaktualizuj swoje hasło aby zachować bezpieczeństwo konta</p>
-							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-secondary" onClick={handleChangePassword}>
 								🔑 Zmień hasło
 							</button>
 						</div>
@@ -259,7 +298,7 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Dwuetapowa weryfikacja (2FA)</h3>
 							<p>Dodaj dodatkową warstwę zabezpieczeń do swojego konta</p>
-							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-secondary" onClick={handleEnable2FA}>
 								🛡️ Włącz 2FA
 							</button>
 						</div>
@@ -267,7 +306,7 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Aktywne sesje</h3>
 							<p>Zarządzaj urządzeniami zalogowanymi do Twojego konta</p>
-							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-secondary" onClick={handleShowSessions}>
 								📱 Pokaż sesje
 							</button>
 						</div>
