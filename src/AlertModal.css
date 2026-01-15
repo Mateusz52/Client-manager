@@ -1,0 +1,292 @@
+/* ============================================
+   ALERT MODAL - CUSTOM ALERTS
+   ============================================ */
+
+/* Overlay - ciemne tło */
+.alert-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.7);
+	backdrop-filter: blur(8px);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* Container - modal box */
+.alert-modal-container {
+	background: white;
+	border-radius: 20px;
+	padding: 40px 32px 32px 32px;
+	max-width: 480px;
+	width: 100%;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+	text-align: center;
+	animation: slideUp 0.3s ease-out;
+	position: relative;
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(30px) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* Ikona */
+.alert-modal-icon {
+	font-size: 64px;
+	margin-bottom: 20px;
+	animation: bounceIn 0.5s ease-out;
+}
+
+@keyframes bounceIn {
+	0% {
+		opacity: 0;
+		transform: scale(0.3);
+	}
+	50% {
+		transform: scale(1.1);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Tytuł */
+.alert-modal-title {
+	font-size: 24px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0 0 16px 0;
+	font-family: 'Quicksand', sans-serif;
+}
+
+/* Wiadomość */
+.alert-modal-message {
+	font-size: 16px;
+	color: #6c757d;
+	line-height: 1.6;
+	margin-bottom: 32px;
+	font-family: 'Quicksand', sans-serif;
+	white-space: pre-line; /* Zachowuje łamanie linii z \n */
+}
+
+/* Akcje - przyciski */
+.alert-modal-actions {
+	display: flex;
+	gap: 12px;
+	justify-content: center;
+}
+
+/* Przycisk bazowy */
+.alert-modal-btn {
+	padding: 14px 32px;
+	border-radius: 12px;
+	font-size: 16px;
+	font-weight: 700;
+	font-family: 'Quicksand', sans-serif;
+	cursor: pointer;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	border: none;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	min-width: 120px;
+}
+
+.alert-modal-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.alert-modal-btn:active {
+	transform: translateY(0);
+}
+
+/* Przycisk Cancel */
+.alert-modal-btn-cancel {
+	background: white;
+	color: #667eea;
+	border: 2px solid #667eea;
+}
+
+.alert-modal-btn-cancel:hover {
+	background: #f8f9fa;
+}
+
+/* Przycisk Confirm - różne kolory dla typów */
+.alert-modal-btn-confirm {
+	color: white;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* INFO - fioletowy gradient */
+.alert-modal-btn-info {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.alert-modal-btn-info:hover {
+	box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+/* SUCCESS - zielony gradient */
+.alert-modal-btn-success {
+	background: linear-gradient(135deg, #94c11e 0%, #7ea518 100%);
+}
+
+.alert-modal-btn-success:hover {
+	box-shadow: 0 8px 24px rgba(148, 193, 30, 0.4);
+}
+
+/* ERROR - czerwony gradient */
+.alert-modal-btn-error {
+	background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.alert-modal-btn-error:hover {
+	box-shadow: 0 8px 24px rgba(220, 53, 69, 0.4);
+}
+
+/* WARNING - pomarańczowy gradient */
+.alert-modal-btn-warning {
+	background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+	color: #243c4c;
+}
+
+.alert-modal-btn-warning:hover {
+	box-shadow: 0 8px 24px rgba(255, 193, 7, 0.4);
+}
+
+/* CONFIRM - niebieski gradient */
+.alert-modal-btn-confirm {
+	background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+}
+
+.alert-modal-btn-confirm:hover {
+	box-shadow: 0 8px 24px rgba(23, 162, 184, 0.4);
+}
+
+/* Border color dla różnych typów */
+.alert-modal-info {
+	border-top: 6px solid #667eea;
+}
+
+.alert-modal-success {
+	border-top: 6px solid #94c11e;
+}
+
+.alert-modal-error {
+	border-top: 6px solid #dc3545;
+}
+
+.alert-modal-warning {
+	border-top: 6px solid #ffc107;
+}
+
+.alert-modal-confirm {
+	border-top: 6px solid #17a2b8;
+}
+
+/* ============================================
+   RESPONSIVE - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+	.alert-modal-overlay {
+		padding: 16px;
+	}
+
+	.alert-modal-container {
+		padding: 32px 24px 24px 24px;
+		max-width: 100%;
+	}
+
+	.alert-modal-icon {
+		font-size: 56px;
+		margin-bottom: 16px;
+	}
+
+	.alert-modal-title {
+		font-size: 20px;
+		margin-bottom: 12px;
+	}
+
+	.alert-modal-message {
+		font-size: 15px;
+		margin-bottom: 24px;
+	}
+
+	.alert-modal-actions {
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.alert-modal-btn {
+		width: 100%;
+		padding: 14px 24px;
+		font-size: 15px;
+		min-width: 0;
+	}
+}
+
+@media (max-width: 480px) {
+	.alert-modal-container {
+		padding: 24px 20px 20px 20px;
+		border-radius: 16px;
+	}
+
+	.alert-modal-icon {
+		font-size: 48px;
+	}
+
+	.alert-modal-title {
+		font-size: 18px;
+	}
+
+	.alert-modal-message {
+		font-size: 14px;
+	}
+}
+
+/* ============================================
+   LOADING SPINNER (OPCJONALNIE)
+   ============================================ */
+
+.alert-modal-loading {
+	border-top: 6px solid #667eea;
+}
+
+.alert-modal-spinner {
+	width: 60px;
+	height: 60px;
+	border: 6px solid #f3f3f3;
+	border-top: 6px solid #667eea;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}

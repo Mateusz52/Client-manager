@@ -1,0 +1,53 @@
+/* ============================================
+   DESIGN SYSTEM - Zmienne globalne
+   ============================================ */
+
+:root {
+	/* Kolory główne */
+	--primary: #667eea;
+	--primary-dark: #5568d3;
+	--primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	
+	--accent: #94c11e;
+	--accent-dark: #7ea518;
+	--accent-gradient: linear-gradient(135deg, #94c11e 0%, #7ea518 100%);
+	
+	/* Kolory neutralne */
+	--dark: #243c4c;
+	--gray: #6c757d;
+	--gray-light: #e0e0e0;
+	--gray-lighter: #f0f0f0;
+	--gray-bg: #f8f9fa;
+	
+	/* Kolory semantyczne */
+	--success: #28a745;
+	--success-light: #d4edda;
+	--warning: #ffc107;
+	--warning-light: #fff3cd;
+	--danger: #dc3545;
+	--danger-light: #f8d7da;
+	--info: #17a2b8;
+	--info-light: #d1ecf1;
+	
+	/* Cienie */
+	--shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+	--shadow-md: 0 4px 20px rgba(0,0,0,0.1);
+	--shadow-lg: 0 12px 40px rgba(0,0,0,0.15);
+	
+	/* Border radius */
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-xl: 20px;
+	
+	/* Fonty */
+	--font-family: 'Quicksand', sans-serif;
+	--font-size-sm: 13px;
+	--font-size-base: 15px;
+	--font-size-lg: 18px;
+	--font-size-xl: 24px;
+	--font-size-2xl: 32px;
+	
+	/* Transitions */
+	--transition: all 0.3s ease;
+}
