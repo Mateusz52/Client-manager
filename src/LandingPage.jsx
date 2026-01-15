@@ -170,8 +170,8 @@ export default function LandingPage() {
 						{/* KROK 1: OBRAZ-TEKST */}
 						<div className='demo-step'>
 							<div className='demo-visual'>
-								<div className='demo-screenshot' onClick={() => openLightbox('/dist/step1-template.png')}>
-									<img src='/dist/step1-template.png' alt='Wybierz szablon produktu' />
+								<div className='demo-screenshot' onClick={() => openLightbox('/step1-template.png')}>
+									<img src='/step1-template.png' alt='Wybierz szablon produktu' />
 								</div>
 							</div>
 							<div className='demo-text'>
@@ -187,8 +187,8 @@ export default function LandingPage() {
 						{/* KROK 2: TEKST-OBRAZ */}
 						<div className='demo-step demo-step-reverse'>
 							<div className='demo-visual'>
-								<div className='demo-screenshot' onClick={() => openLightbox('/dist/step2-product.png')}>
-									<img src='/dist/step2-product.png' alt='Tworzenie nowego produktu' />
+								<div className='demo-screenshot' onClick={() => openLightbox('/step2-product.png')}>
+									<img src='/step2-product.png' alt='Tworzenie nowego produktu' />
 								</div>
 							</div>
 							<div className='demo-text'>
@@ -204,8 +204,8 @@ export default function LandingPage() {
 						{/* KROK 3: OBRAZ-TEKST */}
 						<div className='demo-step'>
 							<div className='demo-visual'>
-								<div className='demo-screenshot' onClick={() => openLightbox('/dist/step3-order.png')}>
-									<img src='/dist/step3-order.png' alt='Dodawanie nowego zamówienia' />
+								<div className='demo-screenshot' onClick={() => openLightbox('/step3-order.png')}>
+									<img src='/step3-order.png' alt='Dodawanie nowego zamówienia' />
 								</div>
 							</div>
 							<div className='demo-text'>
@@ -221,8 +221,8 @@ export default function LandingPage() {
 						{/* KROK 4: TEKST-OBRAZ */}
 						<div className='demo-step demo-step-reverse'>
 							<div className='demo-visual'>
-								<div className='demo-screenshot' onClick={() => openLightbox('/dist/step4-list.png')}>
-									<img src='/dist/step4-list.png' alt='Lista zamówień z filtrami' />
+								<div className='demo-screenshot' onClick={() => openLightbox('/step4-list.png')}>
+									<img src='/step4-list.png' alt='Lista zamówień z filtrami' />
 								</div>
 							</div>
 							<div className='demo-text'>
@@ -238,8 +238,8 @@ export default function LandingPage() {
 						{/* KROK 5: OBRAZ-TEKST */}
 						<div className='demo-step'>
 							<div className='demo-visual'>
-								<div className='demo-screenshot' onClick={() => openLightbox('/dist/step5-stats.png')}>
-									<img src='/dist/step5-stats.png' alt='Statystyki sprzedaży' />
+								<div className='demo-screenshot' onClick={() => openLightbox('/step5-stats.png')}>
+									<img src='/step5-stats.png' alt='Statystyki sprzedaży' />
 								</div>
 							</div>
 							<div className='demo-text'>
@@ -255,8 +255,8 @@ export default function LandingPage() {
 						{/* KROK 6: TEKST-OBRAZ */}
 						<div className='demo-step demo-step-reverse'>
 							<div className='demo-visual'>
-								<div className='demo-screenshot' onClick={() => openLightbox('/dist/step6-team.png')}>
-									<img src='/dist/step6-team.png' alt='Zarządzanie zespołem' />
+								<div className='demo-screenshot' onClick={() => openLightbox('/step6-team.png')}>
+									<img src='/step6-team.png' alt='Zarządzanie zespołem' />
 								</div>
 							</div>
 							<div className='demo-text'>

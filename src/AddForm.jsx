@@ -3,6 +3,13 @@ import { db } from './firebase'
 import { doc, updateDoc } from 'firebase/firestore'
 import { useAuth } from './AuthContext'
 import { useAlert } from './AlertProvider'
+import DatePicker, { registerLocale } from 'react-datepicker'
+import pl from 'date-fns/locale/pl'
+import 'react-datepicker/dist/react-datepicker.css'
+import { format } from 'date-fns'
+
+// Rejestruj polski język
+registerLocale('pl', pl)
 
 export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes }) {
 	const { currentUser, permissions, organizationId } = useAuth()
@@ -21,6 +28,10 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 
 	const [selectedProductType, setSelectedProductType] = useState(null)
 	const [currentCurrency, setCurrentCurrency] = useState('PLN')
+	
+	// Stany dla DatePicker
+	const [startDate, setStartDate] = useState(null)
+	const [endDate, setEndDate] = useState(null)
 
 	const availableCurrencies = ['PLN', 'EUR', 'USD', 'GBP', 'CHF', 'CZK']
 
@@ -31,6 +42,14 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			setSelectedProductType(productType || null)
 			if (productType) {
 				setCurrentCurrency(productType.currency || 'PLN')
+			}
+			
+			// Ustaw daty dla DatePicker
+			if (editingOrder.dateStart) {
+				setStartDate(new Date(editingOrder.dateStart))
+			}
+			if (editingOrder.dateEnd) {
+				setEndDate(new Date(editingOrder.dateEnd))
 			}
 		}
 	}, [editingOrder, productTypes])
@@ -80,6 +99,28 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 				[name]: value
 			}
 		}))
+	}
+	
+	// Handler dla DatePicker - Data zamówienia
+	const handleStartDateChange = (date) => {
+		setStartDate(date)
+		if (date) {
+			const formattedDate = format(date, 'yyyy-MM-dd')
+			setFormData(prev => ({ ...prev, dateStart: formattedDate }))
+		} else {
+			setFormData(prev => ({ ...prev, dateStart: '' }))
+		}
+	}
+	
+	// Handler dla DatePicker - Data wysyłki
+	const handleEndDateChange = (date) => {
+		setEndDate(date)
+		if (date) {
+			const formattedDate = format(date, 'yyyy-MM-dd')
+			setFormData(prev => ({ ...prev, dateEnd: formattedDate }))
+		} else {
+			setFormData(prev => ({ ...prev, dateEnd: '' }))
+		}
 	}
 
 	const handleCurrencyChange = async (newCurrency) => {
@@ -136,6 +177,8 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 		})
 		setSelectedProductType(null)
 		setCurrentCurrency('PLN')
+		setStartDate(null)
+		setEndDate(null)
 	}
 
 	const handleCancelClick = () => {
@@ -151,6 +194,8 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 		})
 		setSelectedProductType(null)
 		setCurrentCurrency('PLN')
+		setStartDate(null)
+		setEndDate(null)
 		onCancel()
 	}
 
@@ -232,26 +277,37 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 							/>
 						</div>
 
-						{/* Data zamówienia */}
+						{/* Data zamówienia - DATEPICKER */}
 						<div className='form-group'>
 							<label>{isSale ? 'Data zamówienia' : 'Data zakupu'}</label>
-							<input
-								type='date'
-								name='dateStart'
-								value={formData.dateStart}
-								onChange={handleBasicChange}
+							<DatePicker
+								selected={startDate}
+								onChange={handleStartDateChange}
+								dateFormat="dd.MM.yyyy"
+								locale="pl"
+								showWeekNumbers
+								weekLabel="Tydz."
+								placeholderText="Wybierz datę..."
+								className="date-picker-input"
+								calendarClassName="custom-datepicker"
 								required
 							/>
 						</div>
 
-						{/* Data wysyłki */}
+						{/* Data wysyłki - DATEPICKER */}
 						<div className='form-group'>
 							<label>{isSale ? 'Data wysyłki' : 'Data dostawy'}</label>
-							<input
-								type='date'
-								name='dateEnd'
-								value={formData.dateEnd}
-								onChange={handleBasicChange}
+							<DatePicker
+								selected={endDate}
+								onChange={handleEndDateChange}
+								dateFormat="dd.MM.yyyy"
+								locale="pl"
+								showWeekNumbers
+								weekLabel="Tydz."
+								placeholderText="Wybierz datę..."
+								className="date-picker-input"
+								calendarClassName="custom-datepicker"
+								minDate={startDate}
 								required
 							/>
 						</div>
@@ -336,7 +392,7 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 						</button>
 					)}
 					<button type='submit' className='save-btn'>
-						{editingOrder ? '✓ Zapisz zmiany' : '+ Dodaj zamówienie'}
+						{editingOrder ? '✔ Zapisz zmiany' : '+ Dodaj zamówienie'}
 					</button>
 				</div>
 			</form>

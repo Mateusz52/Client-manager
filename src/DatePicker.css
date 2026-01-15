@@ -1,0 +1,207 @@
+/* ============================================
+   CUSTOM DATEPICKER STYLES
+   ============================================ */
+
+/* Input dla DatePicker */
+.date-picker-input {
+	width: 100%;
+	padding: 12px 16px;
+	border: 2px solid #e2e8f0;
+	border-radius: 10px;
+	font-size: 15px;
+	font-family: 'Quicksand', sans-serif;
+	transition: all 0.3s;
+	background: white;
+	cursor: pointer;
+}
+
+.date-picker-input:hover {
+	border-color: #cbd5e0;
+}
+
+.date-picker-input:focus {
+	outline: none;
+	border-color: #667eea;
+	box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Kalendarz */
+.react-datepicker {
+	font-family: 'Quicksand', sans-serif;
+	border: 1px solid #e2e8f0;
+	border-radius: 16px;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+	overflow: hidden;
+}
+
+.react-datepicker__header {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border-bottom: none;
+	padding: 20px 10px 10px;
+	border-radius: 0;
+}
+
+.react-datepicker__current-month {
+	color: white;
+	font-weight: 700;
+	font-size: 16px;
+	margin-bottom: 10px;
+}
+
+.react-datepicker__day-name {
+	color: rgba(255, 255, 255, 0.9);
+	font-weight: 600;
+	font-size: 13px;
+	width: 36px;
+	line-height: 36px;
+	margin: 2px;
+}
+
+/* Numery tygodni */
+.react-datepicker__week-number {
+	color: #667eea;
+	font-weight: 700;
+	font-size: 12px;
+	width: 36px;
+	line-height: 36px;
+	margin: 2px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(102, 126, 234, 0.1);
+	border-radius: 8px;
+}
+
+.react-datepicker__week-number:hover {
+	background: rgba(102, 126, 234, 0.2);
+	cursor: pointer;
+}
+
+/* Dni */
+.react-datepicker__day {
+	color: #2d3748;
+	width: 36px;
+	line-height: 36px;
+	margin: 2px;
+	border-radius: 8px;
+	transition: all 0.2s;
+	font-weight: 500;
+}
+
+.react-datepicker__day:hover {
+	background: rgba(102, 126, 234, 0.1);
+	color: #667eea;
+}
+
+.react-datepicker__day--selected {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	font-weight: 700;
+}
+
+.react-datepicker__day--selected:hover {
+	background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+}
+
+.react-datepicker__day--keyboard-selected {
+	background: rgba(102, 126, 234, 0.2);
+	color: #667eea;
+}
+
+.react-datepicker__day--today {
+	font-weight: 700;
+	color: #667eea;
+	border: 2px solid #667eea;
+}
+
+.react-datepicker__day--outside-month {
+	color: #cbd5e0;
+}
+
+.react-datepicker__day--disabled {
+	color: #e2e8f0;
+	cursor: not-allowed;
+}
+
+.react-datepicker__day--disabled:hover {
+	background: transparent;
+}
+
+/* Nawigacja */
+.react-datepicker__navigation {
+	top: 20px;
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.2);
+	transition: all 0.2s;
+}
+
+.react-datepicker__navigation:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.react-datepicker__navigation-icon::before {
+	border-color: white;
+	border-width: 2px 2px 0 0;
+	height: 8px;
+	width: 8px;
+	top: 10px;
+}
+
+/* Miesiące */
+.react-datepicker__month {
+	margin: 10px;
+}
+
+/* Dropdown dla miesięcy i lat */
+.react-datepicker__year-dropdown,
+.react-datepicker__month-dropdown {
+	background: white;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.react-datepicker__year-option,
+.react-datepicker__month-option {
+	padding: 8px 12px;
+	transition: all 0.2s;
+}
+
+.react-datepicker__year-option:hover,
+.react-datepicker__month-option:hover {
+	background: rgba(102, 126, 234, 0.1);
+	color: #667eea;
+}
+
+.react-datepicker__year-option--selected,
+.react-datepicker__month-option--selected {
+	background: #667eea;
+	color: white;
+}
+
+/* Triangle/Popup */
+.react-datepicker__triangle {
+	display: none;
+}
+
+/* Portal dla datepickera */
+.react-datepicker-popper {
+	z-index: 9999;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+	.react-datepicker {
+		font-size: 14px;
+	}
+
+	.react-datepicker__day-name,
+	.react-datepicker__day,
+	.react-datepicker__week-number {
+		width: 32px;
+		line-height: 32px;
+		margin: 1px;
+	}
+}
