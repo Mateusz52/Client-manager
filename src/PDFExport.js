@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { getOrderTotalValue } from './linkedOrderHelpers'
 
 // Funkcja do konwersji polskich znaków
 const replacePolishChars = (text) => {
@@ -78,15 +79,20 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 			'zakup': 'Z'
 		}
 
-		// Główna tabela - kompaktowa
+		// Główna tabela - kompaktowa Z LINKED PRODUCTS!
 		const tableData = []
 		
 		activeOrders.forEach((order, index) => {
+			// ✅ SPRAWDŹ CZY ZAMÓWIENIE ŁĄCZONE
+			const isLinked = order.isLinked && order.linkedProducts && order.linkedProducts.length > 0
+			
 			// Wiersz główny
 			tableData.push([
 				`${index + 1}`,
 				typeMap[order.transactionType] || 'S',
-				replacePolishChars(order.type) || '-',
+				isLinked 
+					? `${replacePolishChars(order.type)} +${order.linkedProducts.length}`  // ✅ BADGE DLA LINKED
+					: replacePolishChars(order.type) || '-',
 				replacePolishChars(order.client) || '-',
 				`${order.quantity || 0} ${replacePolishChars(getUnit(order))}`,
 				`${order.price || 0} ${getCurrency(order)}`,
@@ -95,7 +101,7 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 				statusMap[order.status]?.substring(0, 1) || '-'
 			])
 
-			// Wiersz ze szczegółami (jeśli są)
+			// Wiersz ze szczegółami głównego produktu (jeśli są)
 			if (order.productDetails && typeof order.productDetails === 'object' && Object.keys(order.productDetails).length > 0) {
 				const details = Object.entries(order.productDetails)
 					.map(([key, value]) => `${replacePolishChars(key)}: ${replacePolishChars(value)}`)
@@ -103,6 +109,52 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 				
 				tableData.push([
 					{ content: `Szczegoly: ${details}`, colSpan: 9, styles: { fontStyle: 'italic', fontSize: 7, textColor: [100, 100, 100] } }
+				])
+			}
+
+			// ✅ DODAJ LINKED PRODUCTS (jeśli są)
+			if (isLinked) {
+				order.linkedProducts.forEach((product, prodIndex) => {
+					// Wiersz dla dodatkowego produktu
+					tableData.push([
+						'', // Pusta komórka (sub-item)
+						'', // Pusta komórka
+						`  +- ${replacePolishChars(product.type)}`,  // Wcięcie z symbolem
+						'',
+						`${product.quantity || 0} ${replacePolishChars(product.unit || 'szt')}`,
+						`${product.price || 0} ${product.currency || 'PLN'}`,
+						'',
+						'',
+						''
+					])
+
+					// Szczegóły dodatkowego produktu (jeśli są)
+					if (product.productDetails && Object.keys(product.productDetails).length > 0) {
+						const prodDetails = Object.entries(product.productDetails)
+							.map(([key, value]) => `${replacePolishChars(key)}: ${replacePolishChars(value)}`)
+							.join(' | ')
+						
+						tableData.push([
+							{ content: `     Szcz.: ${prodDetails}`, colSpan: 9, styles: { fontStyle: 'italic', fontSize: 6, textColor: [120, 120, 120] } }
+						])
+					}
+				})
+
+				// ✅ ŁĄCZNA WARTOŚĆ ZAMÓWIENIA
+				const totalValue = getOrderTotalValue(order)
+				const currency = getCurrency(order)
+				tableData.push([
+					{ 
+						content: `LACZNA WARTOSC: ${totalValue.toFixed(2)} ${currency}`, 
+						colSpan: 9, 
+						styles: { 
+							fontStyle: 'bold', 
+							fontSize: 7, 
+							textColor: [102, 126, 234],
+							fillColor: [248, 249, 250],
+							cellPadding: 2
+						} 
+					}
 				])
 			}
 		})
@@ -148,7 +200,7 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 			}
 		})
 
-		// Podsumowanie - kompaktowe
+		// Podsumowanie - kompaktowe Z LINKED PRODUCTS!
 		const finalY = doc.lastAutoTable.finalY + 5
 
 		// Sprawdź czy jest miejsce, jeśli nie - nowa strona
@@ -159,13 +211,23 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 			yPos = finalY
 		}
 
-		// Obliczenia sum
-		const totalQuantity = activeOrders.reduce((sum, order) => sum + (parseInt(order.quantity) || 0), 0)
+		// Obliczenia sum - Z LINKED PRODUCTS!
+		const totalQuantity = activeOrders.reduce((sum, order) => {
+			let quantity = parseInt(order.quantity) || 0
+			
+			// Dodaj ilości z linked products
+			if (order.isLinked && order.linkedProducts && Array.isArray(order.linkedProducts)) {
+				order.linkedProducts.forEach(product => {
+					quantity += parseInt(product.quantity) || 0
+				})
+			}
+			
+			return sum + quantity
+		}, 0)
 		
+		// ✅ SUMA WARTOŚCI Z LINKED PRODUCTS!
 		const valuesByCurrency = activeOrders.reduce((acc, order) => {
-			const price = parseFloat(order.price) || 0
-			const quantity = parseInt(order.quantity) || 0
-			const totalValue = price * quantity
+			const totalValue = getOrderTotalValue(order)  // ✅ UŻYJ HELPER
 			const currency = getCurrency(order)
 
 			if (!acc[currency]) {

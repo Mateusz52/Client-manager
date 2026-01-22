@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from './AuthContext'
+import { getOrderTotalValue, getTotalProductsCount, isLinkedOrder } from './linkedOrderHelpers'
 
 export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, productTypes }) {
 	const { permissions } = useAuth()
@@ -21,8 +22,6 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 	const toggleDetails = (orderId) => {
 		setExpandedOrderId(expandedOrderId === orderId ? null : orderId)
 	}
-
-	
 
 	const getCurrencyForOrder = (order) => {
 		if (order.currency) {
@@ -50,7 +49,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 					<tr>
 						<th>Typ</th>
 						<th>Status</th>
-						<th>Typ produktu</th>
+						<th>Produkty</th>
 						<th>Firma</th>
 						<th>Data zamówienia</th>
 						<th>Data wysyłki</th>
@@ -76,12 +75,21 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 											className={`status-select status-${order.status}`}
 											disabled={!permissions?.canEditOrders}>
 											<option value='w-trakcie'>W trakcie</option>
+											<option value='wyprodukowane'>Wyprodukowane</option>
 											<option value='oplacone'>Opłacone</option>
 											<option value='zrealizowane'>Zrealizowane</option>
 											<option value='anulowane'>Anulowane</option>
 										</select>
 									</td>
-									<td data-label='Typ produktu'>{order.type || '-'}</td>
+									<td data-label='Produkty'>
+										{isLinkedOrder(order) ? (
+											<div className='linked-products-badge'>
+												🔗 {order.type} +{getTotalProductsCount(order) - 1} więcej
+											</div>
+										) : (
+											order.type || '-'
+										)}
+									</td>
 									<td data-label='Firma'>{order.client}</td>
 									<td data-label='Data zamówienia'>{order.dateStart}</td>
 									<td data-label='Data wysyłki'>{order.dateEnd}</td>
@@ -108,9 +116,11 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 										<td colSpan='7'>
 											<div className='order-details-content'>
 												<h3>📋 Szczegóły zamówienia</h3>
+												
+												{/* PRODUKT GŁÓWNY */}
 												<div className='details-grid'>
 													<div className='details-section'>
-														<h4>Informacje podstawowe</h4>
+														<h4>🏷️ Produkt główny: {order.type}</h4>
 														<div className='details-items'>
 															<div className='detail-item'>
 																<span className='detail-label'>Typ transakcji:</span>
@@ -125,8 +135,14 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 																<span className='detail-value'>{order.quantity || '-'}</span>
 															</div>
 															<div className='detail-item'>
-																<span className='detail-label'>Cena ({getCurrencyForOrder(order)}):</span>
-																<span className='detail-value'>{order.price || '-'}</span>
+																<span className='detail-label'>Cena za jednostkę:</span>
+																<span className='detail-value'>{order.price} {getCurrencyForOrder(order)}/{getUnitForOrder(order)}</span>
+															</div>
+															<div className='detail-item'>
+																<span className='detail-label'>Wartość:</span>
+																<span className='detail-value detail-value-highlight'>
+																	{(order.quantity * order.price).toFixed(2)} {getCurrencyForOrder(order)}
+																</span>
 															</div>
 														</div>
 													</div>
@@ -145,6 +161,85 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 														</div>
 													)}
 												</div>
+
+												{/* DODATKOWE PRODUKTY - JEŚLI ZAMÓWIENIE ŁĄCZONE */}
+												{isLinkedOrder(order) && (
+													<div className='linked-products-details'>
+														<h4>🔗 Dodatkowe produkty w zamówieniu:</h4>
+														
+														{order.linkedProducts.map((product, index) => (
+															<div key={index} className='linked-product-detail-item'>
+																<div className='product-detail-header'>
+																	<strong>🏷️ Produkt {index + 2}: {product.type}</strong>
+																</div>
+																<div className='product-detail-grid'>
+																	<div>
+																		<span className='detail-label'>Ilość:</span>
+																		<span className='detail-value'>{product.quantity} {product.unit}</span>
+																	</div>
+																	<div>
+																		<span className='detail-label'>Cena za jednostkę:</span>
+																		<span className='detail-value'>{product.price} {product.currency}/{product.unit}</span>
+																	</div>
+																	<div>
+																		<span className='detail-label'>Wartość:</span>
+																		<span className='detail-value detail-value-highlight'>
+																			{(product.quantity * product.price).toFixed(2)} {product.currency}
+																		</span>
+																	</div>
+																</div>
+																
+																{/* Customowe parametry dodatkowego produktu */}
+																{product.productDetails && Object.keys(product.productDetails).length > 0 && (
+																	<div className='custom-params-section'>
+																		<strong>Parametry:</strong>
+																		{Object.entries(product.productDetails).map(([key, value]) => (
+																			<div key={key} className='custom-param'>
+																				<span className='param-key'>{key}:</span>
+																				<span className='param-value'>{value}</span>
+																			</div>
+																		))}
+																	</div>
+																)}
+															</div>
+														))}
+													</div>
+												)}
+
+												{/* ZAŁĄCZNIKI */}
+												{order.attachments && order.attachments.length > 0 && (
+													<div className='attachments-section'>
+														<h4>📎 Załączniki ({order.attachments.length})</h4>
+														<div className='attachments-grid'>
+															{order.attachments.map((file, index) => (
+																<div key={index} className='attachment-item'>
+																	{file.type && file.type.startsWith('image/') ? (
+																		<div className='attachment-preview'>
+																			<img src={file.url} alt={file.name} />
+																		</div>
+																	) : (
+																		<div className='attachment-icon'>
+																			{file.type === 'application/pdf' ? '📄' : 
+																			 file.type?.includes('word') ? '📝' : 
+																			 file.type?.includes('excel') ? '📊' : '📎'}
+																		</div>
+																	)}
+																	<div className='attachment-info'>
+																		<div className='attachment-name'>{file.name}</div>
+																		<a 
+																			href={file.url} 
+																			target='_blank' 
+																			rel='noopener noreferrer'
+																			className='attachment-download'
+																		>
+																			⬇️ Pobierz
+																		</a>
+																	</div>
+																</div>
+															))}
+														</div>
+													</div>
+												)}
 											</div>
 										</td>
 									</tr>
@@ -173,6 +268,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 									className={`status-select status-${order.status}`}
 									disabled={!permissions?.canEditOrders}>
 									<option value='w-trakcie'>W trakcie</option>
+									<option value='wyprodukowane'>Wyprodukowane</option>
 									<option value='oplacone'>Opłacone</option>
 									<option value='zrealizowane'>Zrealizowane</option>
 									<option value='anulowane'>Anulowane</option>
@@ -180,7 +276,13 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 							</div>
 
 							<div className='card-body'>
-								<h3 className='card-product-type'>{order.type || '-'}</h3>
+								<h3 className='card-product-type'>
+									{isLinkedOrder(order) ? (
+										<>🔗 {order.type} +{getTotalProductsCount(order) - 1} więcej</>
+									) : (
+										order.type || '-'
+									)}
+								</h3>
 								<p className='card-client'>🏢 {order.client}</p>
 								<div className='card-dates'>
 									<span>📅 {order.dateStart}</span>
@@ -191,8 +293,9 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 
 							{isExpanded && (
 								<div className='card-details'>
+									{/* Produkt główny */}
 									<div className='card-detail-section'>
-										<h4>Informacje podstawowe</h4>
+										<h4>🏷️ Produkt główny: {order.type}</h4>
 										<div className='card-detail-item'>
 											<span>Ilość:</span>
 											<strong>{order.quantity} {getUnitForOrder(order)}</strong>
@@ -200,6 +303,12 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 										<div className='card-detail-item'>
 											<span>Cena:</span>
 											<strong>{order.price} {getCurrencyForOrder(order)}</strong>
+										</div>
+										<div className='card-detail-item'>
+											<span>Wartość:</span>
+											<strong className='highlight-value'>
+												{(order.quantity * order.price).toFixed(2)} {getCurrencyForOrder(order)}
+											</strong>
 										</div>
 									</div>
 
@@ -212,6 +321,78 @@ export default function OrdersTable({ orders, onEdit, onDelete, onStatusChange, 
 													<strong>{value || '-'}</strong>
 												</div>
 											))}
+										</div>
+									)}
+
+									{/* Dodatkowe produkty - mobile */}
+									{isLinkedOrder(order) && (
+										<div className='card-linked-products'>
+											<h4>🔗 Dodatkowe produkty:</h4>
+											{order.linkedProducts.map((product, index) => (
+												<div key={index} className='card-linked-product-item'>
+													<h5>Produkt {index + 2}: {product.type}</h5>
+													<div className='card-detail-item'>
+														<span>Ilość:</span>
+														<strong>{product.quantity} {product.unit}</strong>
+													</div>
+													<div className='card-detail-item'>
+														<span>Cena:</span>
+														<strong>{product.price} {product.currency}</strong>
+													</div>
+													<div className='card-detail-item'>
+														<span>Wartość:</span>
+														<strong className='highlight-value'>
+															{(product.quantity * product.price).toFixed(2)} {product.currency}
+														</strong>
+													</div>
+													
+													{product.productDetails && Object.keys(product.productDetails).length > 0 && (
+														<div className='card-product-params'>
+															<strong>Parametry:</strong>
+															{Object.entries(product.productDetails).map(([key, value]) => (
+																<div key={key} className='card-param-item'>
+																	<span>{key}:</span> {value}
+																</div>
+															))}
+														</div>
+													)}
+												</div>
+											))}
+										</div>
+									)}
+
+									{/* Załączniki - mobile */}
+									{order.attachments && order.attachments.length > 0 && (
+										<div className='card-attachments'>
+											<h4>📎 Załączniki ({order.attachments.length})</h4>
+											<div className='card-attachments-list'>
+												{order.attachments.map((file, index) => (
+													<div key={index} className='card-attachment-item'>
+														{file.type && file.type.startsWith('image/') ? (
+															<div className='card-attachment-preview'>
+																<img src={file.url} alt={file.name} />
+															</div>
+														) : (
+															<div className='card-attachment-icon'>
+																{file.type === 'application/pdf' ? '📄' : 
+																 file.type?.includes('word') ? '📝' : 
+																 file.type?.includes('excel') ? '📊' : '📎'}
+															</div>
+														)}
+														<div className='card-attachment-info'>
+															<div className='card-attachment-name'>{file.name}</div>
+															<a 
+																href={file.url} 
+																target='_blank' 
+																rel='noopener noreferrer'
+																className='card-attachment-download'
+															>
+																⬇️ Pobierz
+															</a>
+														</div>
+													</div>
+												))}
+											</div>
 										</div>
 									)}
 								</div>

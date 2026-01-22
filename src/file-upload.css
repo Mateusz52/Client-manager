@@ -1,0 +1,250 @@
+/* ================================
+   FILE UPLOAD - KOMPAKTOWE STYLE (PO LEWEJ)
+   ================================ */
+
+.file-upload-section {
+	background: #ffffff;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	padding: 14px 16px;
+	margin: 16px 0;
+	max-width: 600px; /* ✅ TYLKO PO LEWEJ - NIE ROZCIĄGNIĘTE */
+}
+
+.file-upload-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 10px;
+}
+
+.file-upload-title {
+	font-size: 14px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0;
+}
+
+.file-upload-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.file-upload-counter {
+	font-size: 12px;
+	font-weight: 600;
+	color: #6c757d;
+	background: #f8f9fa;
+	padding: 3px 8px;
+	border-radius: 8px;
+}
+
+/* Mini Upload Button - w headerze */
+.file-upload-button-mini {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 12px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.file-upload-button-mini:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.file-upload-icon {
+	font-size: 14px;
+}
+
+.file-upload-text {
+	font-size: 12px;
+}
+
+.file-upload-hint-empty {
+	margin: 0;
+	font-size: 11px;
+	color: #6c757d;
+	text-align: center;
+	padding: 8px;
+}
+
+/* Progress - kompaktowy */
+.file-upload-progress {
+	margin: 10px 0;
+}
+
+.progress-item {
+	margin-bottom: 8px;
+}
+
+.progress-name {
+	display: block;
+	font-size: 11px;
+	color: #495057;
+	margin-bottom: 3px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.progress-bar {
+	width: 100%;
+	height: 4px;
+	background: #e9ecef;
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+	transition: width 0.3s;
+}
+
+/* Files Grid - KOMPAKTOWY (max 3 kolumny w wąskiej ramce) */
+.files-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 10px;
+	margin-top: 10px;
+}
+
+.file-item-compact {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px;
+	background: #f8f9fa;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	transition: all 0.2s;
+	position: relative;
+}
+
+.file-item-compact:hover {
+	background: #e9ecef;
+	border-color: #667eea;
+}
+
+/* File Preview (dla zdjęć) */
+.file-preview-compact {
+	width: 100%;
+	height: 100px;
+	border-radius: 6px;
+	overflow: hidden;
+	background: white;
+	border: 1px solid #dee2e6;
+}
+
+.file-preview-compact img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* File Icon (dla dokumentów) */
+.file-icon-compact {
+	width: 100%;
+	height: 100px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 40px;
+	background: white;
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+}
+
+/* File Info - KOMPAKTOWA */
+.file-info-compact {
+	flex: 1;
+	min-width: 0;
+}
+
+.file-name-compact {
+	font-size: 11px;
+	font-weight: 600;
+	color: #243c4c;
+	margin-bottom: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.file-meta-compact {
+	font-size: 10px;
+	color: #6c757d;
+}
+
+/* File Actions - KOMPAKTOWE */
+.file-actions-compact {
+	display: flex;
+	gap: 6px;
+	justify-content: center;
+}
+
+.file-action-btn-compact {
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: white;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-size: 14px;
+	text-decoration: none;
+	border: 1px solid #dee2e6;
+}
+
+.download-btn:hover {
+	background: #667eea;
+	border-color: #667eea;
+	transform: translateY(-1px);
+}
+
+.remove-btn:hover {
+	background: #dc3545;
+	border-color: #dc3545;
+	transform: translateY(-1px);
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+	.file-upload-section {
+		padding: 12px 14px;
+		max-width: 100%; /* ✅ PEŁNA SZEROKOŚĆ NA MOBILE */
+	}
+
+	.files-grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 8px;
+	}
+
+	.file-preview-compact,
+	.file-icon-compact {
+		height: 80px;
+	}
+
+	.file-name-compact {
+		font-size: 10px;
+	}
+}
+
+@media (max-width: 480px) {
+	.files-grid {
+		grid-template-columns: 1fr;
+	}
+}

@@ -11,6 +11,9 @@ import Statistics from './Statistics'
 import Pagination from './Pagination'
 import ProductConfigurator from './ProductConfigurator'
 import TeamManagement from './TeamManagement'
+import { showToast } from './simpleAlerts'
+import FeedbackModal from './FeedbackModal'
+import { useFeedbackTrigger } from './useFeedbackTrigger'
 
 export default function Dashboard() {
 	const { currentUser, organizationId, logout } = useAuth()
@@ -32,6 +35,21 @@ export default function Dashboard() {
 	const [itemsPerPage, setItemsPerPage] = useState(10)
 	const [loading, setLoading] = useState(true)
 	const [productTypes, setProductTypes] = useState([])
+
+	// ✅ FEEDBACK HOOK - DODANE
+	const {
+		shouldShowFeedback,
+		handleFeedbackSubmitted,
+		handleFeedbackClosed,
+		handleRemindLater,
+		handleNeverShow
+	} = useFeedbackTrigger(orders.length)
+
+	// Debug logi (możesz usunąć po testach)
+	useEffect(() => {
+		console.log('📊 Orders count:', orders.length)
+		console.log('📊 Should show feedback:', shouldShowFeedback)
+	}, [orders.length, shouldShowFeedback])
 
 	useEffect(() => {
 		if (!currentUser || !organizationId) {
@@ -92,6 +110,8 @@ export default function Dashboard() {
 					updatedAt: new Date().toISOString(),
 				})
 				setEditingId(null)
+				// ✅ TOAST - Edytowano zamówienie
+				showToast('Zamówienie zostało zaktualizowane', 'success')
 			} else {
 				const ordersRef = collection(db, 'organizations', organizationId, 'orders')
 				await addDoc(ordersRef, {
@@ -100,10 +120,13 @@ export default function Dashboard() {
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 				})
+				// ✅ TOAST - Dodano zamówienie
+				showToast('Zamówienie zostało dodane', 'success')
 			}
 		} catch (error) {
 			console.error('Error adding/updating order:', error)
-			alert('Wystąpił błąd. Spróbuj ponownie.')
+			// ❌ TOAST - Błąd
+			showToast('Wystąpił błąd. Spróbuj ponownie.', 'error')
 		}
 	}
 
@@ -113,6 +136,7 @@ export default function Dashboard() {
 	}
 
 	const handleDeleteClick = id => {
+		console.log('🗑️ Próba usunięcia zamówienia ID:', id)
 		setOrderToDelete(id)
 		setDeleteModalOpen(true)
 	}
@@ -120,14 +144,22 @@ export default function Dashboard() {
 	const handleDeleteConfirm = async () => {
 		if (!currentUser || !organizationId || !orderToDelete) return
 
+		console.log('🗑️ Potwierdzenie usunięcia:')
+		console.log('  Order ID:', orderToDelete)
+		console.log('  Organization ID:', organizationId)
+
 		try {
 			const orderRef = doc(db, 'organizations', organizationId, 'orders', orderToDelete)
 			await deleteDoc(orderRef)
 			setDeleteModalOpen(false)
 			setOrderToDelete(null)
+			// ✅ TOAST - Usunięto zamówienie
+			showToast('Zamówienie zostało usunięte', 'success')
+			console.log('✅ Zamówienie usunięte pomyślnie')
 		} catch (error) {
-			console.error('Error deleting order:', error)
-			alert('Nie udało się usunąć zamówienia.')
+			console.error('❌ Error deleting order:', error)
+			// ❌ TOAST - Błąd usuwania
+			showToast('Nie udało się usunąć zamówienia', 'error')
 		}
 	}
 
@@ -148,15 +180,30 @@ export default function Dashboard() {
 	const handleStatusChange = async (orderId, newStatus) => {
 		if (!currentUser || !organizationId) return
 
+		// ✅ DEBUG - Loguj ID zamówienia
+		console.log('🔄 Zmiana statusu:')
+		console.log('  Order ID:', orderId)
+		console.log('  Nowy status:', newStatus)
+
 		try {
 			const orderRef = doc(db, 'organizations', organizationId, 'orders', orderId)
 			await updateDoc(orderRef, {
 				status: newStatus,
 				updatedAt: new Date().toISOString(),
 			})
+			// ✅ TOAST - Zmieniono status
+			const statusLabels = {
+				'w-trakcie': 'W trakcie',
+				'oplacone': 'Opłacone',
+				'zrealizowane': 'Zrealizowane',
+				'anulowane': 'Anulowane'
+			}
+			showToast(`Status zmieniony na: ${statusLabels[newStatus]}`, 'success')
+			console.log('✅ Status zaktualizowany pomyślnie')
 		} catch (error) {
-			console.error('Error updating status:', error)
-			alert('Nie udało się zmienić statusu.')
+			console.error('❌ Error updating status:', error)
+			// ❌ TOAST - Błąd zmiany statusu
+			showToast('Nie udało się zmienić statusu', 'error')
 		}
 	}
 
@@ -220,7 +267,6 @@ export default function Dashboard() {
 
 	return (
 		<>
-			
 			<div style={{ paddingTop: '80px' }}>
 				<Header
 					onStatsClick={handleStatsToggle}
@@ -275,6 +321,15 @@ export default function Dashboard() {
 				<ProductConfigurator isOpen={configOpen} onClose={() => setConfigOpen(false)} />
 				<TeamManagement isOpen={teamOpen} onClose={() => setTeamOpen(false)} />
 			</div>
+
+			{/* ✅ FEEDBACK MODAL - DODANY */}
+			<FeedbackModal
+				isOpen={shouldShowFeedback}
+				onClose={handleFeedbackClosed}
+				onSubmit={handleFeedbackSubmitted}
+				onRemindLater={handleRemindLater}
+				onNeverShow={handleNeverShow}
+			/>
 		</>
 	)
 }

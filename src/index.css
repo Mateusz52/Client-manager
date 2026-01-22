@@ -5714,3 +5714,112 @@ body {
 	background: #e9ecef;
 }
 
+/* ================================
+   STATUSY - PRAWDZIWA NAPRAWA
+   
+   Dodaj TO do /src/index.css
+   
+   1. Znajdź linię 471: text-transform: uppercase;
+   2. Zmień na: text-transform: none;
+   
+   3. Znajdź linię 514 (po .status-anulowane)
+   4. Dodaj PONIŻSZY KOD zaraz po niej
+   ================================ */
+
+/* Status: Wyprodukowane (niebieski z gradientem) */
+.status-wyprodukowane {
+	background: linear-gradient(135deg, rgba(13, 110, 253, 0.28), rgba(13, 110, 253, 0.12));
+	color: #004085;
+	border-color: #0d6efd;
+}
+
+/* Status: Opłacone (turkusowy z gradientem) */
+.status-oplacone {
+	background: linear-gradient(135deg, rgba(23, 162, 184, 0.28), rgba(23, 162, 184, 0.12));
+	color: #0c5460;
+	border-color: #17a2b8;
+}
+
+/* ================================
+   NAPRAWA: Focus state zachowuje kolor!
+   ================================ */
+
+.status-w-trakcie:focus,
+.status-w-trakcie:active {
+	background: linear-gradient(135deg, rgba(255, 193, 7, 0.28), rgba(255, 193, 7, 0.12)) !important;
+	color: #8a6d00 !important;
+	border-color: #ffc107 !important;
+}
+
+.status-wyprodukowane:focus,
+.status-wyprodukowane:active {
+	background: linear-gradient(135deg, rgba(13, 110, 253, 0.28), rgba(13, 110, 253, 0.12)) !important;
+	color: #004085 !important;
+	border-color: #0d6efd !important;
+}
+
+.status-zrealizowane:focus,
+.status-zrealizowane:active {
+	background: linear-gradient(135deg, rgba(148, 193, 30, 0.35), rgba(148, 193, 30, 0.15)) !important;
+	color: #2f4f00 !important;
+	border-color: #94c11e !important;
+}
+
+.status-oplacone:focus,
+.status-oplacone:active {
+	background: linear-gradient(135deg, rgba(23, 162, 184, 0.28), rgba(23, 162, 184, 0.12)) !important;
+	color: #0c5460 !important;
+	border-color: #17a2b8 !important;
+}
+
+.status-anulowane:focus,
+.status-anulowane:active {
+	background: linear-gradient(135deg, rgba(220, 53, 69, 0.32), rgba(220, 53, 69, 0.15)) !important;
+	color: #7c1d27 !important;
+	border-color: #dc3545 !important;
+}
+
+/* ================================
+   STATUSY - PROSTE STYLE
+   
+   Otwórz: /src/index.css
+   
+   1. Linia 471: Zmień "text-transform: uppercase;" na "text-transform: none;"
+   
+   2. Linie 498-514: ZAMIEŃ na poniższy kod
+   ================================ */
+
+/* W trakcie - żółty */
+.status-w-trakcie {
+	background: #ffc107;
+	color: #000;
+	border-color: #ffc107;
+}
+
+/* Wyprodukowane - jasny niebieski */
+.status-wyprodukowane {
+	background: #17a2b8;
+	color: #fff;
+	border-color: #17a2b8;
+}
+
+/* Zrealizowane - jasny zielony */
+.status-zrealizowane {
+	background: #28a745;
+	color: #fff;
+	border-color: #28a745;
+}
+
+/* Opłacone - CIEMNY zielony (ciemniejszy niż Zrealizowane!) */
+.status-oplacone {
+	background: #155724;
+	color: #fff;
+	border-color: #155724;
+}
+
+/* Anulowane - czerwony */
+.status-anulowane {
+	background: #dc3545;
+	color: #fff;
+	border-color: #dc3545;
+}

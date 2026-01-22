@@ -47,7 +47,7 @@ export default function FilterBar({ onFilterChange, filteredOrders, allOrders, p
 	}
 
 	const handleExportPDF = () => {
-		console.log('🔍 Kliknięto eksport PDF')
+		console.log('📄 Kliknięto eksport PDF')
 		console.log('Przefiltrowane zamówienia:', filteredOrders)
 		console.log('Liczba:', filteredOrders.length)
 
@@ -114,6 +114,7 @@ export default function FilterBar({ onFilterChange, filteredOrders, allOrders, p
 						<select value={status} onChange={handleStatusChange} className='filter-input filter-select'>
 							<option value='all'>Wszystkie</option>
 							<option value='w-trakcie'>W trakcie</option>
+							<option value='wyprodukowane'>Wyprodukowane</option>
 							<option value='zrealizowane'>Zrealizowane</option>
 							<option value='oplacone'>Opłacone</option>
 							<option value='anulowane'>Anulowane</option>

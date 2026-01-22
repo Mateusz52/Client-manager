@@ -3743,3 +3743,1889 @@ body.sidebar-is-open .orders-table-container {
 		font-size: 14px !important;
 	}
 }
+
+/* ================================
+   ZAMÓWIENIA ŁĄCZONE - STYLE
+   ================================ */
+
+/* Checkbox zamówienia łączonego */
+.linked-order-checkbox {
+	padding: 24px 28px;
+	background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+	border-radius: 12px;
+	margin: 24px 0;
+	border: 2px dashed #dee2e6;
+	transition: all 0.3s;
+}
+
+.linked-order-checkbox:hover {
+	background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+	border-color: #667eea;
+}
+
+.checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	cursor: pointer;
+	margin: 0;
+	user-select: none;
+}
+
+.checkbox-label input[type='checkbox'] {
+	width: 24px;
+	height: 24px;
+	cursor: pointer;
+	accent-color: #667eea;
+}
+
+.checkbox-text {
+	font-size: 16px;
+	font-weight: 700;
+	color: #243c4c;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* Sekcja produktu */
+.product-section {
+	background: white;
+	border: 2px solid #e9ecef;
+	border-radius: 16px;
+	padding: 24px 28px;
+	margin-bottom: 16px;
+}
+
+.product-section-title {
+	font-size: 18px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0 0 20px 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* Sekcja dodatkowych produktów */
+.linked-products-section {
+	margin-top: 16px;
+}
+
+.linked-product-item {
+	background: #f8f9fa;
+	border: 2px solid #e9ecef;
+	border-radius: 16px;
+	padding: 24px 28px;
+	margin-bottom: 16px;
+	position: relative;
+	animation: fadeInSlide 0.3s ease-out;
+}
+
+@keyframes fadeInSlide {
+	from {
+		opacity: 0;
+		transform: translateY(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.linked-product-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.remove-product-btn {
+	background: #dc3545;
+	color: white;
+	border: none;
+	padding: 8px 16px;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-family: 'Quicksand', sans-serif;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.remove-product-btn:hover {
+	background: #c82333;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.add-product-btn {
+	width: 100%;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	padding: 14px 24px;
+	border-radius: 12px;
+	font-size: 15px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.3s;
+	font-family: 'Quicksand', sans-serif;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+.add-product-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Separator sekcji */
+.form-section-divider {
+	margin: 20px 0 16px 0;
+	padding-bottom: 12px;
+	border-bottom: 2px solid #e9ecef;
+}
+
+.form-section-divider h4 {
+	font-size: 15px;
+	font-weight: 700;
+	color: #667eea;
+	margin: 0;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+	.linked-product-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+	}
+
+	.remove-product-btn {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.product-section-title {
+		font-size: 16px;
+	}
+
+	.linked-order-checkbox {
+		padding: 20px;
+	}
+
+	.checkbox-text {
+		font-size: 14px;
+	}
+}
+
+/* ================================
+   STYLE DLA ZAMÓWIEŃ ŁĄCZONYCH W ORDERSTABLE
+   Dodaj na końcu swojego OrdersTable CSS
+   ================================ */
+
+/* Badge zamówienia łączonego w tabeli */
+.linked-products-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	padding: 6px 12px;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+/* Sekcja dodatkowych produktów w szczegółach */
+.linked-products-details {
+	margin-top: 24px;
+	padding: 24px;
+	background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+	border-radius: 16px;
+	border-left: 6px solid #667eea;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.linked-products-details h4 {
+	margin: 0 0 20px 0;
+	color: #667eea;
+	font-size: 18px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* Pojedynczy dodatkowy produkt */
+.linked-product-detail-item {
+	background: white;
+	border: 2px solid #e9ecef;
+	border-radius: 12px;
+	padding: 20px;
+	margin-bottom: 16px;
+	transition: all 0.2s;
+}
+
+.linked-product-detail-item:hover {
+	border-color: #667eea;
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.product-detail-header {
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 2px solid #e9ecef;
+}
+
+.product-detail-header strong {
+	font-size: 16px;
+	color: #243c4c;
+	font-weight: 700;
+}
+
+/* Grid szczegółów produktu */
+.product-detail-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 16px;
+	margin-bottom: 12px;
+}
+
+.product-detail-grid > div {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.detail-label {
+	font-size: 13px;
+	color: #6c757d;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.detail-value {
+	font-size: 15px;
+	color: #243c4c;
+	font-weight: 700;
+}
+
+.detail-value-highlight {
+	color: #667eea;
+	font-size: 16px;
+}
+
+/* Customowe parametry produktu */
+.custom-params-section {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 2px dashed #e9ecef;
+	font-size: 14px;
+}
+
+.custom-params-section > strong {
+	display: block;
+	margin-bottom: 8px;
+	color: #667eea;
+	font-size: 13px;
+	text-transform: uppercase;
+}
+
+.custom-param {
+	display: flex;
+	gap: 8px;
+	margin-top: 6px;
+	padding: 6px 0;
+}
+
+.param-key {
+	color: #6c757d;
+	font-weight: 600;
+	min-width: 120px;
+}
+
+.param-value {
+	color: #243c4c;
+	font-weight: 500;
+}
+
+/* Sekcja łącznej wartości */
+.total-value-section {
+	margin-top: 20px;
+	padding: 16px 24px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border-radius: 12px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 16px;
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.total-value-section strong {
+	font-weight: 700;
+}
+
+.total-value {
+	font-size: 22px;
+	font-weight: 800;
+	letter-spacing: 0.5px;
+}
+
+/* ================================
+   MOBILE - KARTY
+   ================================ */
+
+/* Sekcja linked products w kartach mobile */
+.card-linked-products {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 2px solid #e9ecef;
+}
+
+.card-linked-products h4 {
+	font-size: 15px;
+	color: #667eea;
+	margin: 0 0 12px 0;
+	font-weight: 700;
+}
+
+.card-linked-product-item {
+	background: #f8f9fa;
+	border: 2px solid #e9ecef;
+	border-radius: 10px;
+	padding: 12px;
+	margin-bottom: 12px;
+}
+
+.card-linked-product-item h5 {
+	font-size: 14px;
+	color: #243c4c;
+	margin: 0 0 10px 0;
+	font-weight: 700;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #e9ecef;
+}
+
+.card-product-params {
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px dashed #dee2e6;
+	font-size: 13px;
+}
+
+.card-product-params strong {
+	display: block;
+	margin-bottom: 6px;
+	color: #667eea;
+	font-size: 12px;
+}
+
+.card-param-item {
+	margin-top: 4px;
+	color: #495057;
+}
+
+.card-param-item span {
+	font-weight: 600;
+	color: #6c757d;
+}
+
+.card-total-value {
+	margin-top: 16px;
+	padding: 12px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border-radius: 8px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 14px;
+}
+
+.total-amount {
+	font-size: 18px;
+	font-weight: 800;
+}
+
+.highlight-value {
+	color: #667eea;
+	font-weight: 700;
+}
+
+/* ================================
+   RESPONSYWNOŚĆ
+   ================================ */
+
+@media (max-width: 768px) {
+	.linked-products-badge {
+		font-size: 11px;
+		padding: 4px 8px;
+	}
+
+	.linked-products-details {
+		padding: 16px;
+		margin-top: 16px;
+	}
+
+	.linked-products-details h4 {
+		font-size: 15px;
+	}
+
+	.linked-product-detail-item {
+		padding: 14px;
+	}
+
+	.product-detail-grid {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+
+	.product-detail-header strong {
+		font-size: 14px;
+	}
+
+	.detail-value-highlight {
+		font-size: 15px;
+	}
+
+	.total-value-section {
+		flex-direction: column;
+		gap: 8px;
+		text-align: center;
+		padding: 14px 16px;
+	}
+
+	.total-value {
+		font-size: 20px;
+	}
+
+	.card-total-value {
+		flex-direction: column;
+		gap: 6px;
+		text-align: center;
+	}
+
+	.total-amount {
+		font-size: 16px;
+	}
+}
+
+@media (max-width: 480px) {
+	.linked-products-details {
+		padding: 12px;
+		border-left-width: 4px;
+	}
+
+	.linked-product-detail-item {
+		padding: 12px;
+	}
+
+	.param-key {
+		min-width: 100px;
+		font-size: 12px;
+	}
+
+	.param-value {
+		font-size: 12px;
+	}
+}
+
+/* ================================
+   ZAŁĄCZNIKI W SZCZEGÓŁACH ZAMÓWIENIA
+   Dodaj na końcu orderstable-linked.css
+   ================================ */
+
+/* Sekcja załączników - Desktop */
+.attachments-section {
+	margin-top: 24px;
+	padding: 20px;
+	background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+	border-radius: 12px;
+	border-left: 4px solid #667eea;
+}
+
+.attachments-section h4 {
+	margin: 0 0 16px 0;
+	color: #667eea;
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.attachments-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 12px;
+}
+
+.attachment-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px;
+	background: white;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	transition: all 0.2s;
+}
+
+.attachment-item:hover {
+	border-color: #667eea;
+	box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.attachment-preview {
+	width: 50px;
+	height: 50px;
+	border-radius: 6px;
+	overflow: hidden;
+	flex-shrink: 0;
+	background: #f8f9fa;
+}
+
+.attachment-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.attachment-icon {
+	width: 50px;
+	height: 50px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 28px;
+	background: #f8f9fa;
+	border-radius: 6px;
+	flex-shrink: 0;
+}
+
+.attachment-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.attachment-name {
+	font-size: 13px;
+	font-weight: 600;
+	color: #243c4c;
+	margin-bottom: 4px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.attachment-download {
+	font-size: 12px;
+	color: #667eea;
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.attachment-download:hover {
+	text-decoration: underline;
+}
+
+/* Sekcja załączników - Mobile */
+.card-attachments {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 2px solid #e9ecef;
+}
+
+.card-attachments h4 {
+	font-size: 15px;
+	color: #667eea;
+	margin: 0 0 12px 0;
+	font-weight: 700;
+}
+
+.card-attachments-list {
+	display: grid;
+	gap: 10px;
+}
+
+.card-attachment-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px;
+	background: white;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+}
+
+.card-attachment-preview {
+	width: 45px;
+	height: 45px;
+	border-radius: 6px;
+	overflow: hidden;
+	flex-shrink: 0;
+	background: #f8f9fa;
+}
+
+.card-attachment-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.card-attachment-icon {
+	width: 45px;
+	height: 45px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 24px;
+	background: #f8f9fa;
+	border-radius: 6px;
+	flex-shrink: 0;
+}
+
+.card-attachment-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.card-attachment-name {
+	font-size: 13px;
+	font-weight: 600;
+	color: #243c4c;
+	margin-bottom: 4px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.card-attachment-download {
+	font-size: 12px;
+	color: #667eea;
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.card-attachment-download:hover {
+	text-decoration: underline;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+	.attachments-section {
+		padding: 16px;
+		margin-top: 16px;
+	}
+
+	.attachments-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.attachment-item {
+		padding: 10px;
+	}
+}
+
+/* ================================
+   FILE UPLOAD - KOMPAKTOWE STYLE
+   ================================ */
+
+.file-upload-section {
+	background: #ffffff;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	padding: 14px 16px;
+	margin: 16px 0;
+}
+
+.file-upload-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 10px;
+}
+
+.file-upload-title {
+	font-size: 14px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0;
+}
+
+.file-upload-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.file-upload-counter {
+	font-size: 12px;
+	font-weight: 600;
+	color: #6c757d;
+	background: #f8f9fa;
+	padding: 3px 8px;
+	border-radius: 8px;
+}
+
+/* Mini Upload Button - w headerze */
+.file-upload-button-mini {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 12px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.file-upload-button-mini:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.file-upload-icon {
+	font-size: 14px;
+}
+
+.file-upload-text {
+	font-size: 12px;
+}
+
+.file-upload-hint-empty {
+	margin: 0;
+	font-size: 11px;
+	color: #6c757d;
+	text-align: center;
+	padding: 8px;
+}
+
+/* Progress - kompaktowy */
+.file-upload-progress {
+	margin: 10px 0;
+}
+
+.progress-item {
+	margin-bottom: 8px;
+}
+
+.progress-name {
+	display: block;
+	font-size: 11px;
+	color: #495057;
+	margin-bottom: 3px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.progress-bar {
+	width: 100%;
+	height: 4px;
+	background: #e9ecef;
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+	transition: width 0.3s;
+}
+
+/* Files Grid - KOMPAKTOWY */
+.files-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: 10px;
+	margin-top: 10px;
+}
+
+.file-item-compact {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px;
+	background: #f8f9fa;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	transition: all 0.2s;
+	position: relative;
+}
+
+.file-item-compact:hover {
+	background: #e9ecef;
+	border-color: #667eea;
+}
+
+/* File Preview (dla zdjęć) - WIĘKSZY */
+.file-preview-compact {
+	width: 100%;
+	height: 100px;
+	border-radius: 6px;
+	overflow: hidden;
+	background: white;
+	border: 1px solid #dee2e6;
+}
+
+.file-preview-compact img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* File Icon (dla dokumentów) */
+.file-icon-compact {
+	width: 100%;
+	height: 100px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 40px;
+	background: white;
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+}
+
+/* File Info - KOMPAKTOWA */
+.file-info-compact {
+	flex: 1;
+	min-width: 0;
+}
+
+.file-name-compact {
+	font-size: 11px;
+	font-weight: 600;
+	color: #243c4c;
+	margin-bottom: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.file-meta-compact {
+	font-size: 10px;
+	color: #6c757d;
+}
+
+/* File Actions - KOMPAKTOWE */
+.file-actions-compact {
+	display: flex;
+	gap: 6px;
+	justify-content: center;
+}
+
+.file-action-btn-compact {
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: white;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-size: 14px;
+	text-decoration: none;
+	border: 1px solid #dee2e6;
+}
+
+.download-btn:hover {
+	background: #667eea;
+	border-color: #667eea;
+	transform: translateY(-1px);
+}
+
+.remove-btn:hover {
+	background: #dc3545;
+	border-color: #dc3545;
+	transform: translateY(-1px);
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+	.file-upload-section {
+		padding: 12px 14px;
+	}
+
+	.files-grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 8px;
+	}
+
+	.file-preview-compact,
+	.file-icon-compact {
+		height: 80px;
+	}
+
+	.file-name-compact {
+		font-size: 10px;
+	}
+}
+
+@media (max-width: 480px) {
+	.files-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ================================
+   FILE UPLOAD - KOMPAKTOWE STYLE
+   ================================ */
+
+.file-upload-section {
+	background: #ffffff;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	padding: 16px 20px;
+	margin: 16px 0;
+}
+
+.file-upload-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 14px;
+}
+
+.file-upload-title {
+	font-size: 15px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0;
+}
+
+.file-upload-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.file-upload-counter {
+	font-size: 13px;
+	font-weight: 600;
+	color: #6c757d;
+	background: #f8f9fa;
+	padding: 4px 10px;
+	border-radius: 8px;
+}
+
+/* Mini Upload Button - WIĘKSZY */
+.file-upload-button-mini {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.2s;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.file-upload-button-mini:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.file-upload-icon {
+	font-size: 16px;
+}
+
+.file-upload-text {
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.file-upload-hint-empty {
+	margin: 0;
+	font-size: 11px;
+	color: #6c757d;
+	text-align: center;
+	padding: 8px;
+}
+
+/* Progress - kompaktowy */
+.file-upload-progress {
+	margin: 10px 0;
+}
+
+.progress-item {
+	margin-bottom: 8px;
+}
+
+.progress-name {
+	display: block;
+	font-size: 11px;
+	color: #495057;
+	margin-bottom: 3px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.progress-bar {
+	width: 100%;
+	height: 4px;
+	background: #e9ecef;
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+	transition: width 0.3s;
+}
+
+/* Files Grid - PEŁNA SZEROKOŚĆ, WĘŻSZE KOLUMNY */
+.files-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+	gap: 12px;
+	margin-top: 12px;
+	width: 100%;
+}
+
+.file-item-compact {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	background: #f8f9fa;
+	border: 1px solid #e9ecef;
+	border-radius: 8px;
+	transition: all 0.2s;
+	position: relative;
+}
+
+.file-item-compact:hover {
+	background: #e9ecef;
+	border-color: #667eea;
+}
+
+/* File Preview (dla zdjęć) - WIĘKSZY */
+.file-preview-compact {
+	width: 100%;
+	height: 110px;
+	border-radius: 6px;
+	overflow: hidden;
+	background: white;
+	border: 1px solid #dee2e6;
+}
+
+.file-preview-compact img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* File Icon (dla dokumentów) */
+.file-icon-compact {
+	width: 100%;
+	height: 110px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 40px;
+	background: white;
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+}
+
+/* File Info - KOMPAKTOWA */
+.file-info-compact {
+	flex: 1;
+	min-width: 0;
+}
+
+.file-name-compact {
+	font-size: 12px;
+	font-weight: 600;
+	color: #243c4c;
+	margin-bottom: 3px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.file-meta-compact {
+	font-size: 11px;
+	color: #6c757d;
+}
+
+/* File Actions - WIĘKSZE */
+.file-actions-compact {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+}
+
+.file-action-btn-compact {
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: white;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-size: 16px;
+	text-decoration: none;
+	border: 1px solid #dee2e6;
+}
+
+.download-btn:hover {
+	background: #667eea;
+	border-color: #667eea;
+	transform: translateY(-2px);
+	box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.remove-btn:hover {
+	background: #dc3545;
+	border-color: #dc3545;
+	transform: translateY(-2px);
+	box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+	.file-upload-section {
+		padding: 12px 14px;
+	}
+
+	.files-grid {
+		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+		gap: 8px;
+	}
+
+	.file-preview-compact,
+	.file-icon-compact {
+		height: 80px;
+	}
+
+	.file-name-compact {
+		font-size: 10px;
+	}
+
+	.file-upload-button-mini {
+		padding: 6px 12px;
+		font-size: 11px;
+	}
+}
+
+@media (max-width: 480px) {
+	.files-grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+
+	.file-preview-compact,
+	.file-icon-compact {
+		height: 70px;
+	}
+}
+
+/* ================================
+   NOWY STATUS: WYPRODUKOWANE
+   Dodaj ten kod do pliku app.css lub index.css
+   ================================ */
+
+/* Status: Wyprodukowane (niebieski) */
+.status-wyprodukowane {
+	color: #004085 !important;
+	background: #cfe2ff !important;
+	border-color: #0d6efd !important;
+}
+
+/* OPCJONALNIE: Jeśli masz duplikat w innym miejscu w CSS, dodaj też tam: */
+.status-wyprodukowane {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+}
+
+/* ================================
+   STATUSY - NAPRAWIONE (dodaj na końcu app.css)
+   ================================ */
+
+/* Status: W trakcie (żółty) */
+.status-w-trakcie {
+	color: #856404 !important;
+	background: #fff9e6 !important;
+	border-color: #ffc107 !important;
+}
+
+/* Status: Wyprodukowane (niebieski) - NOWY! */
+.status-wyprodukowane {
+	color: #004085 !important;
+	background: #cfe2ff !important;
+	border-color: #0d6efd !important;
+}
+
+/* Status: Zrealizowane (zielony) */
+.status-zrealizowane {
+	color: #155724 !important;
+	background: #e8f5e9 !important;
+	border-color: #28a745 !important;
+}
+
+/* Status: Opłacone (turkusowy) - NAPRAWIONE! */
+.status-oplacone {
+	color: #0c5460 !important;
+	background: #e8f4f8 !important;
+	border-color: #17a2b8 !important;
+}
+
+/* NAPRAWA: Opłacone option w select */
+.status-select option[value="oplacone"] {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+}
+
+/* Status: Anulowane (czerwony) */
+.status-anulowane {
+	color: #721c24 !important;
+	background: #f9e8ea !important;
+	border-color: #dc3545 !important;
+}
+
+/* ================================
+   NAPRAWA: Wszystkie options w status-select
+   ================================ */
+.status-select option {
+	padding: 8px !important;
+	font-weight: 600 !important;
+}
+
+/* Każdy option powinien mieć swój kolor */
+.status-select option[value="w-trakcie"] {
+	background: #fff9e6 !important;
+	color: #856404 !important;
+}
+
+.status-select option[value="wyprodukowane"] {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+}
+
+.status-select option[value="zrealizowane"] {
+	background: #e8f5e9 !important;
+	color: #155724 !important;
+}
+
+.status-select option[value="oplacone"] {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+}
+
+.status-select option[value="anulowane"] {
+	background: #f9e8ea !important;
+	color: #721c24 !important;
+}
+
+/* ================================
+   STATUSY - KOMPLETNA NAPRAWA
+   (dodaj na końcu app.css - ZASTĘPUJE poprzedni CSS statusów!)
+   ================================ */
+
+/* Status: W trakcie (żółty) */
+.status-w-trakcie {
+	color: #856404 !important;
+	background: #fff9e6 !important;
+	border-color: #ffc107 !important;
+}
+
+/* Status: Wyprodukowane (niebieski) - NOWY! */
+.status-wyprodukowane {
+	color: #004085 !important;
+	background: #cfe2ff !important;
+	border-color: #0d6efd !important;
+}
+
+/* Status: Zrealizowane (zielony) */
+.status-zrealizowane {
+	color: #155724 !important;
+	background: #e8f5e9 !important;
+	border-color: #28a745 !important;
+}
+
+/* Status: Opłacone (turkusowy) */
+.status-oplacone {
+	color: #0c5460 !important;
+	background: #e8f4f8 !important;
+	border-color: #17a2b8 !important;
+}
+
+/* Status: Anulowane (czerwony) */
+.status-anulowane {
+	color: #721c24 !important;
+	background: #f9e8ea !important;
+	border-color: #dc3545 !important;
+}
+
+/* ================================
+   NAPRAWA: Options w dropdown
+   ================================ */
+
+/* Bazowe style dla options */
+.status-select option {
+	padding: 8px !important;
+	font-weight: 600 !important;
+}
+
+/* W trakcie */
+.status-select option[value="w-trakcie"] {
+	background: #fff9e6 !important;
+	color: #856404 !important;
+}
+
+/* Wyprodukowane - NOWY! */
+.status-select option[value="wyprodukowane"] {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+}
+
+/* Zrealizowane */
+.status-select option[value="zrealizowane"] {
+	background: #e8f5e9 !important;
+	color: #155724 !important;
+}
+
+/* Opłacone - NAPRAWIONE! */
+.status-select option[value="oplacone"] {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+}
+
+/* Anulowane */
+.status-select option[value="anulowane"] {
+	background: #f9e8ea !important;
+	color: #721c24 !important;
+}
+
+/* ================================
+   NAPRAWA: Focus state (białe pole po kliknięciu)
+   ================================ */
+
+/* W trakcie - focus */
+.status-select option[value="w-trakcie"]:focus,
+.status-select option[value="w-trakcie"]:hover,
+.status-select option[value="w-trakcie"]:checked {
+	background: #fff9e6 !important;
+	color: #856404 !important;
+}
+
+/* Wyprodukowane - focus */
+.status-select option[value="wyprodukowane"]:focus,
+.status-select option[value="wyprodukowane"]:hover,
+.status-select option[value="wyprodukowane"]:checked {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+}
+
+/* Zrealizowane - focus */
+.status-select option[value="zrealizowane"]:focus,
+.status-select option[value="zrealizowane"]:hover,
+.status-select option[value="zrealizowane"]:checked {
+	background: #e8f5e9 !important;
+	color: #155724 !important;
+}
+
+/* Opłacone - focus - NAPRAWA BIAŁEGO TŁA! */
+.status-select option[value="oplacone"]:focus,
+.status-select option[value="oplacone"]:hover,
+.status-select option[value="oplacone"]:checked {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+}
+
+/* Anulowane - focus */
+.status-select option[value="anulowane"]:focus,
+.status-select option[value="anulowane"]:hover,
+.status-select option[value="anulowane"]:checked {
+	background: #f9e8ea !important;
+	color: #721c24 !important;
+}
+
+/* ================================
+   OPCJONALNE: Wyłącz uppercase
+   (odkomentuj jeśli chcesz "Wyprodukowane" zamiast "WYPRODUKOWANE")
+   ================================ */
+
+/*
+.status-select option {
+	text-transform: none !important;
+}
+
+.filter-select option {
+	text-transform: none !important;
+}
+*/
+
+/* ================================
+   STATUSY - AGRESYWNA NAPRAWA
+   USUŃ wszystkie stare .status- z app.css
+   WKLEJ TO na końcu app.css
+   ================================ */
+
+/* ========================================
+   WYŁĄCZ UPPERCASE DLA STATUSÓW - SIŁĄ!
+   ======================================== */
+.status-select,
+.status-select *,
+.status-select option,
+select.status-select,
+select.status-w-trakcie,
+select.status-wyprodukowane,
+select.status-zrealizowane,
+select.status-oplacone,
+select.status-anulowane {
+	text-transform: none !important;
+}
+
+/* ========================================
+   KOLORY SELECTA - bazowe
+   ======================================== */
+.status-w-trakcie {
+	color: #856404 !important;
+	background: #fff9e6 !important;
+	border-color: #ffc107 !important;
+}
+
+.status-wyprodukowane {
+	color: #004085 !important;
+	background: #cfe2ff !important;
+	border-color: #0d6efd !important;
+}
+
+.status-zrealizowane {
+	color: #155724 !important;
+	background: #e8f5e9 !important;
+	border-color: #28a745 !important;
+}
+
+.status-oplacone {
+	color: #0c5460 !important;
+	background: #e8f4f8 !important;
+	border-color: #17a2b8 !important;
+}
+
+.status-anulowane {
+	color: #721c24 !important;
+	background: #f9e8ea !important;
+	border-color: #dc3545 !important;
+}
+
+/* ========================================
+   FOCUS STATE - NAPRAW BIAŁE TŁO!
+   ======================================== */
+
+/* W trakcie - focus */
+.status-w-trakcie:focus,
+.status-w-trakcie:active,
+select.status-w-trakcie:focus,
+select.status-w-trakcie:active {
+	background: #fff9e6 !important;
+	color: #856404 !important;
+	outline: none !important;
+	border-color: #ffc107 !important;
+}
+
+/* Wyprodukowane - focus */
+.status-wyprodukowane:focus,
+.status-wyprodukowane:active,
+select.status-wyprodukowane:focus,
+select.status-wyprodukowane:active {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+	outline: none !important;
+	border-color: #0d6efd !important;
+}
+
+/* Zrealizowane - focus */
+.status-zrealizowane:focus,
+.status-zrealizowane:active,
+select.status-zrealizowane:focus,
+select.status-zrealizowane:active {
+	background: #e8f5e9 !important;
+	color: #155724 !important;
+	outline: none !important;
+	border-color: #28a745 !important;
+}
+
+/* OPŁACONE - FOCUS - NAPRAWA BIAŁEGO TŁA!!! */
+.status-oplacone:focus,
+.status-oplacone:active,
+select.status-oplacone:focus,
+select.status-oplacone:active,
+.status-oplacone:focus-visible {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+	outline: none !important;
+	border-color: #17a2b8 !important;
+	box-shadow: none !important;
+}
+
+/* Anulowane - focus */
+.status-anulowane:focus,
+.status-anulowane:active,
+select.status-anulowane:focus,
+select.status-anulowane:active {
+	background: #f9e8ea !important;
+	color: #721c24 !important;
+	outline: none !important;
+	border-color: #dc3545 !important;
+}
+
+/* ========================================
+   OPTIONS w DROPDOWN
+   ======================================== */
+.status-select option {
+	padding: 8px !important;
+	font-weight: 600 !important;
+	text-transform: none !important;
+}
+
+.status-select option[value="w-trakcie"] {
+	background: #fff9e6 !important;
+	color: #856404 !important;
+}
+
+.status-select option[value="wyprodukowane"] {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+}
+
+.status-select option[value="zrealizowane"] {
+	background: #e8f5e9 !important;
+	color: #155724 !important;
+}
+
+.status-select option[value="oplacone"] {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+}
+
+.status-select option[value="anulowane"] {
+	background: #f9e8ea !important;
+	color: #721c24 !important;
+}
+
+/* ========================================
+   NAPRAWA: Options po kliknięciu
+   ======================================== */
+.status-select option:focus,
+.status-select option:active,
+.status-select option:checked {
+	outline: none !important;
+}
+
+.status-select option[value="w-trakcie"]:focus,
+.status-select option[value="w-trakcie"]:checked {
+	background: #fff9e6 !important;
+	color: #856404 !important;
+}
+
+.status-select option[value="wyprodukowane"]:focus,
+.status-select option[value="wyprodukowane"]:checked {
+	background: #cfe2ff !important;
+	color: #004085 !important;
+}
+
+.status-select option[value="zrealizowane"]:focus,
+.status-select option[value="zrealizowane"]:checked {
+	background: #e8f5e9 !important;
+	color: #155724 !important;
+}
+
+.status-select option[value="oplacone"]:focus,
+.status-select option[value="oplacone"]:checked {
+	background: #e8f4f8 !important;
+	color: #0c5460 !important;
+}
+
+.status-select option[value="anulowane"]:focus,
+.status-select option[value="anulowane"]:checked {
+	background: #f9e8ea !important;
+	color: #721c24 !important;
+}
+
+/* ========================================
+   FILTR SELECT - też bez uppercase!
+   ======================================== */
+.filter-select,
+.filter-select option {
+	text-transform: none !important;
+}
+
+/* ================================
+   STATUSY - PROSTE STYLE
+   
+   Otwórz: /src/index.css
+   
+   1. Linia 471: Zmień "text-transform: uppercase;" na "text-transform: none;"
+   
+   2. Linie 498-514: ZAMIEŃ na poniższy kod
+   ================================ */
+
+/* W trakcie - żółty */
+.status-w-trakcie {
+	background: #ffc107;
+	color: #000;
+	border-color: #ffc107;
+}
+
+/* Wyprodukowane - jasny niebieski */
+.status-wyprodukowane {
+	background: #17a2b8;
+	color: #fff;
+	border-color: #17a2b8;
+}
+
+/* Zrealizowane - jasny zielony */
+.status-zrealizowane {
+	background: #28a745;
+	color: #fff;
+	border-color: #28a745;
+}
+
+/* Opłacone - CIEMNY zielony (ciemniejszy niż Zrealizowane!) */
+.status-oplacone {
+	background: #155724;
+	color: #fff;
+	border-color: #155724;
+}
+
+/* Anulowane - czerwony */
+.status-anulowane {
+	background: #dc3545;
+	color: #fff;
+	border-color: #dc3545;
+}
+
+/* NAPRAWA: Focus state zachowuje kolory! */
+.status-w-trakcie:focus {
+	background: #ffc107 !important;
+	color: #000 !important;
+	border-color: #ffc107 !important;
+	outline: none !important;
+}
+
+.status-wyprodukowane:focus {
+	background: #17a2b8 !important;
+	color: #fff !important;
+	border-color: #17a2b8 !important;
+	outline: none !important;
+}
+
+.status-zrealizowane:focus {
+	background: #28a745 !important;
+	color: #fff !important;
+	border-color: #28a745 !important;
+	outline: none !important;
+}
+
+.status-oplacone:focus {
+	background: #155724 !important;
+	color: #fff !important;
+	border-color: #155724 !important;
+	outline: none !important;
+}
+
+.status-anulowane:focus {
+	background: #dc3545 !important;
+	color: #fff !important;
+	border-color: #dc3545 !important;
+	outline: none !important;
+}
+
+/* ==========================================
+   NADPISANIE STATUSÓW - białe tła!
+   ========================================== */
+.status-w-trakcie,
+select.status-w-trakcie {
+	background: #fff !important;
+	color: #856404 !important;
+	border: 2px solid #ffc107 !important;
+}
+
+.status-wyprodukowane,
+select.status-wyprodukowane {
+	background: #fff !important;
+	color: #0d6efd !important;
+	border: 2px solid #0d6efd !important;
+}
+
+.status-zrealizowane,
+select.status-zrealizowane {
+	background: #fff !important;
+	color: #28a745 !important;
+	border: 2px solid #28a745 !important;
+}
+
+.status-oplacone,
+select.status-oplacone {
+	background: #fff !important;
+	color: #155724 !important;
+	border: 2px solid #155724 !important;
+}
+
+.status-anulowane,
+select.status-anulowane {
+	background: #fff !important;
+	color: #dc3545 !important;
+	border: 2px solid #dc3545 !important;
+}
+
+/* Focus - białe tło! */
+.status-w-trakcie:focus,
+.status-wyprodukowane:focus,
+.status-zrealizowane:focus,
+.status-oplacone:focus,
+.status-anulowane:focus,
+select.status-w-trakcie:focus,
+select.status-wyprodukowane:focus,
+select.status-zrealizowane:focus,
+select.status-oplacone:focus,
+select.status-anulowane:focus {
+	background: #fff !important;
+	outline: none !important;
+}
+
+.status-select:focus {
+	outline: none;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+}
+
+.status-select:hover {
+	transform: translateY(-1px);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.status-select:active {
+	transform: translateY(0);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ==========================================
+   OSTATECZNE NADPISANIE - wklej NA KOŃCU index.css
+   To MUSI zadziałać - resetuje WSZYSTKO
+   ========================================== */
+
+/* RESET selecta - usuń WSZYSTKIE efekty */
+select.status-select,
+select.status-select:focus,
+select.status-select:hover,
+select.status-select:active,
+select.status-select:focus-visible {
+	text-transform: none !important;
+	background: #fff !important;
+	box-shadow: none !important;
+	transition: none !important;
+	transform: none !important;
+	outline: none !important;
+}
+
+/* W trakcie - WSZYSTKIE stany */
+.status-w-trakcie,
+select.status-w-trakcie,
+.status-w-trakcie:focus,
+select.status-w-trakcie:focus,
+.status-w-trakcie:hover,
+select.status-w-trakcie:hover,
+.status-w-trakcie:active,
+select.status-w-trakcie:active {
+	background: #fff !important;
+	color: #856404 !important;
+	border: 2px solid #ffc107 !important;
+	box-shadow: none !important;
+	transform: none !important;
+}
+
+/* Wyprodukowane - WSZYSTKIE stany */
+.status-wyprodukowane,
+select.status-wyprodukowane,
+.status-wyprodukowane:focus,
+select.status-wyprodukowane:focus,
+.status-wyprodukowane:hover,
+select.status-wyprodukowane:hover,
+.status-wyprodukowane:active,
+select.status-wyprodukowane:active {
+	background: #fff !important;
+	color: #0d6efd !important;
+	border: 2px solid #0d6efd !important;
+	box-shadow: none !important;
+	transform: none !important;
+}
+
+/* Zrealizowane - WSZYSTKIE stany */
+.status-zrealizowane,
+select.status-zrealizowane,
+.status-zrealizowane:focus,
+select.status-zrealizowane:focus,
+.status-zrealizowane:hover,
+select.status-zrealizowane:hover,
+.status-zrealizowane:active,
+select.status-zrealizowane:active {
+	background: #fff !important;
+	color: #28a745 !important;
+	border: 2px solid #28a745 !important;
+	box-shadow: none !important;
+	transform: none !important;
+}
+
+/* Opłacone - WSZYSTKIE stany */
+.status-oplacone,
+select.status-oplacone,
+.status-oplacone:focus,
+select.status-oplacone:focus,
+.status-oplacone:hover,
+select.status-oplacone:hover,
+.status-oplacone:active,
+select.status-oplacone:active {
+	background: #fff !important;
+	color: #155724 !important;
+	border: 2px solid #155724 !important;
+	box-shadow: none !important;
+	transform: none !important;
+}
+
+/* Anulowane - WSZYSTKIE stany */
+.status-anulowane,
+select.status-anulowane,
+.status-anulowane:focus,
+select.status-anulowane:focus,
+.status-anulowane:hover,
+select.status-anulowane:hover,
+.status-anulowane:active,
+select.status-anulowane:active {
+	background: #fff !important;
+	color: #dc3545 !important;
+	border: 2px solid #dc3545 !important;
+	box-shadow: none !important;
+	transform: none !important;
+}

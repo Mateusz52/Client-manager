@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useAuth } from './AuthContext'
 import { Link, useNavigate } from 'react-router-dom'
+import { showToast } from './simpleAlerts'
 import './Auth.css'
+import './auth-password.css'
 
 export default function Login() {
 	const { login, resetPassword } = useAuth()
@@ -12,6 +14,9 @@ export default function Login() {
 	const [error, setError] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [resetEmailSent, setResetEmailSent] = useState(false)
+	
+	// Stan dla pokazywania hasła
+	const [showPassword, setShowPassword] = useState(false)
 
 	const handleSubmit = async (e) => {
 		e.preventDefault()
@@ -22,11 +27,14 @@ export default function Login() {
 			if (showResetPassword) {
 				await resetPassword(email)
 				setResetEmailSent(true)
+				showToast('Email z linkiem resetującym został wysłany!', 'success')
 				setLoading(false)
 				return
 			}
 
 			await login(email, password)
+			
+			showToast('Zalogowano pomyślnie!', 'success')
 			
 			// WYMUSZONY REDIRECT
 			console.log('✅ Zalogowany - przekierowuję na /')
@@ -40,13 +48,13 @@ export default function Login() {
 			let errorMessage = 'Wystąpił błąd'
 			
 			if (err.code === 'auth/user-not-found') {
-				errorMessage = '❌ Nie znaleziono użytkownika z tym emailem'
+				errorMessage = 'Nie znaleziono użytkownika z tym emailem'
 			} else if (err.code === 'auth/wrong-password') {
-				errorMessage = '❌ Nieprawidłowe hasło'
+				errorMessage = 'Nieprawidłowe hasło'
 			} else if (err.code === 'auth/invalid-credential') {
-				errorMessage = '❌ Nieprawidłowy email lub hasło'
+				errorMessage = 'Nieprawidłowy email lub hasło'
 			} else if (err.code === 'auth/too-many-requests') {
-				errorMessage = '❌ Za dużo prób logowania. Spróbuj ponownie za chwilę.'
+				errorMessage = 'Za dużo prób logowania. Spróbuj ponownie za chwilę.'
 			} else if (err.message) {
 				errorMessage = err.message
 			}
@@ -152,15 +160,25 @@ export default function Login() {
 
 					<div className="form-group">
 						<label>Hasło</label>
-						<input
-							type="password"
-							placeholder="Twoje hasło"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							className="auth-input"
-							required
-							minLength={6}
-						/>
+						<div className="password-input-wrapper">
+							<input
+								type={showPassword ? "text" : "password"}
+								placeholder="Twoje hasło"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								className="auth-input"
+								required
+								minLength={6}
+							/>
+							<button
+								type="button"
+								className="password-toggle"
+								onClick={() => setShowPassword(!showPassword)}
+								tabIndex="-1"
+							>
+								{showPassword ? '👁️' : '👁️‍🗨️'}
+							</button>
+						</div>
 					</div>
 
 					{error && <div className="auth-error">{error}</div>}
