@@ -1,6 +1,6 @@
 export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 	// Filtruj tylko zrealizowane zamówienia
-	const completedOrders = orders.filter(order => order.status === 'zrealizowane' || 'opłacone')
+	const completedOrders = (orders || []).filter(order => order.status === 'zrealizowane' || order.status === 'oplacone')
 	
 
 	// Podziel na sprzedaż i zakup
@@ -49,7 +49,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 		return sum + quantity
 	}, 0)
 
-	// Łączna wartość z obsługą różnych walut - SPRZEDAŻ
+	// Åączna wartość z obsługą różnych walut - SPRZEDAÅ»
 	const salesValuesByCurrency = salesOrders.reduce((acc, order) => {
 		const price = parseFloat(order.price) || 0
 		const quantity = parseInt(order.quantity) || 0
@@ -65,7 +65,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 		return acc
 	}, {})
 
-	// Łączna wartość z obsługą różnych walut - ZAKUP
+	// Åączna wartość z obsługą różnych walut - ZAKUP
 	const purchaseValuesByCurrency = purchaseOrders.reduce((acc, order) => {
 		const price = parseFloat(order.price) || 0
 		const quantity = parseInt(order.quantity) || 0
@@ -81,7 +81,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 		return acc
 	}, {})
 
-	// Statystyki według typu produktu - SPRZEDAŻ
+	// Statystyki według typu produktu - SPRZEDAÅ»
 	const salesStatsByProductType = salesOrders.reduce((acc, order) => {
 		const productName = order.type || 'Nieznany'
 		
@@ -150,7 +150,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 				<div className='statistics-header'>
 					<h2 className='statistics-title'>Statystyki</h2>
 					<button className='close-stats-btn' onClick={onClose}>
-						✕
+						âœ•
 					</button>
 				</div>
 
@@ -163,13 +163,13 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 					) : (
 						<>
 							<div className='stats-info-banner'>
-								<span>✅ Statystyki obejmują tylko zrealizowane zamówienia</span>
+								<span>âœ… Statystyki obejmują tylko zrealizowane zamówienia</span>
 							</div>
 
 							{/* Statystyki ogólne */}
 							<div className='stats-grid'>
 								<div className='stat-card stat-primary'>
-									<div className='stat-icon'>📦</div>
+									<div className='stat-icon'>ðŸ“¦</div>
 									<div className='stat-content'>
 										<div className='stat-value'>{totalOrders}</div>
 										<div className='stat-label'>Wszystkie zamówienia</div>
@@ -177,7 +177,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 								</div>
 
 								<div className='stat-card stat-success'>
-									<div className='stat-icon'>📤</div>
+									<div className='stat-icon'>ðŸ“¤</div>
 									<div className='stat-content'>
 										<div className='stat-value'>{totalSales}</div>
 										<div className='stat-label'>Sprzedaż</div>
@@ -185,7 +185,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 								</div>
 
 								<div className='stat-card stat-info'>
-									<div className='stat-icon'>📥</div>
+									<div className='stat-icon'>ðŸ“¥</div>
 									<div className='stat-content'>
 										<div className='stat-value'>{totalPurchases}</div>
 										<div className='stat-label'>Zakup</div>
@@ -193,15 +193,15 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 								</div>
 							</div>
 
-							{/* SPRZEDAŻ */}
+							{/* SPRZEDAÅ» */}
 							{totalSales > 0 && (
 								<>
 									<div className='status-stats'>
-										<h3 className='status-stats-title'>📤 Sprzedaż</h3>
+										<h3 className='status-stats-title'>ðŸ“¤ Sprzedaż</h3>
 										
 										<div className='stats-grid'>
 											<div className='stat-card stat-success'>
-												<div className='stat-icon'>📊</div>
+												<div className='stat-icon'>ðŸ“Š</div>
 												<div className='stat-content'>
 													<div className='stat-value'>{totalSalesProducts}</div>
 													<div className='stat-label'>Suma produktów</div>
@@ -210,16 +210,16 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 
 											{Object.entries(salesValuesByCurrency).map(([currency, value]) => (
 												<div className='stat-card stat-success' key={currency}>
-													<div className='stat-icon'>💰</div>
+													<div className='stat-icon'>ðŸ’°</div>
 													<div className='stat-content'>
 														<div className='stat-value'>{value.toFixed(2)} {currency}</div>
-														<div className='stat-label'>Łączna wartość</div>
+														<div className='stat-label'>Åączna wartość</div>
 													</div>
 												</div>
 											))}
 										</div>
 
-										{/* Rozbicie według produktów - SPRZEDAŻ */}
+										{/* Rozbicie według produktów - SPRZEDAÅ» */}
 										{Object.keys(salesStatsByProductType).length > 0 && (
 											<>
 												<h4 className='subsection-title'>Rozbicie według produktów</h4>
@@ -256,11 +256,11 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 							{totalPurchases > 0 && (
 								<>
 									<div className='status-stats'>
-										<h3 className='status-stats-title'>📥 Zakup</h3>
+										<h3 className='status-stats-title'>ðŸ“¥ Zakup</h3>
 										
 										<div className='stats-grid'>
 											<div className='stat-card stat-info'>
-												<div className='stat-icon'>📊</div>
+												<div className='stat-icon'>ðŸ“Š</div>
 												<div className='stat-content'>
 													<div className='stat-value'>{totalPurchasesProducts}</div>
 													<div className='stat-label'>Suma produktów</div>
@@ -269,10 +269,10 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 
 											{Object.entries(purchaseValuesByCurrency).map(([currency, value]) => (
 												<div className='stat-card stat-info' key={currency}>
-													<div className='stat-icon'>💰</div>
+													<div className='stat-icon'>ðŸ’°</div>
 													<div className='stat-content'>
 														<div className='stat-value'>{value.toFixed(2)} {currency}</div>
-														<div className='stat-label'>Łączna wartość</div>
+														<div className='stat-label'>Åączna wartość</div>
 													</div>
 												</div>
 											))}
@@ -313,7 +313,7 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 
 							{/* Statystyki z bieżącego roku */}
 							<div className='status-stats'>
-								<h3 className='status-stats-title'>🎯 Zrealizowane w {currentYear} roku</h3>
+								<h3 className='status-stats-title'>ðŸŽ¯ Zrealizowane w {currentYear} roku</h3>
 
 								{totalOrdersThisYear === 0 ? (
 									<div className='no-stats-year'>
@@ -322,21 +322,21 @@ export default function Statistics({ orders, isOpen, onClose, productTypes }) {
 								) : (
 									<div className='year-stats-grid'>
 										<div className='year-stats-card'>
-											<div className='year-stat-icon'>📦</div>
+											<div className='year-stat-icon'>ðŸ“¦</div>
 											<div className='year-stat-content'>
 												<div className='year-stat-value'>{totalOrdersThisYear}</div>
 												<div className='year-stat-label'>Wszystkich</div>
 											</div>
 										</div>
 										<div className='year-stats-card sale-year-card'>
-											<div className='year-stat-icon'>📤</div>
+											<div className='year-stat-icon'>ðŸ“¤</div>
 											<div className='year-stat-content'>
 												<div className='year-stat-value'>{salesOrdersThisYear.length}</div>
 												<div className='year-stat-label'>Sprzedaż</div>
 											</div>
 										</div>
 										<div className='year-stats-card purchase-year-card'>
-											<div className='year-stat-icon'>📥</div>
+											<div className='year-stat-icon'>ðŸ“¥</div>
 											<div className='year-stat-content'>
 												<div className='year-stat-value'>{purchaseOrdersThisYear.length}</div>
 												<div className='year-stat-label'>Zakup</div>

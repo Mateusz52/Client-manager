@@ -365,3 +365,96 @@
 		width: 100%;
 	}
 }
+
+/* ==========================================
+   CSS DLA ZMIANY HASŁA W SETTINGS
+   Dodaj na końcu /src/Settings.css
+   ========================================== */
+
+.password-change-section {
+	background: #f8f9fa;
+	border-radius: 12px;
+	padding: 24px;
+	margin-bottom: 24px;
+}
+
+.password-change-form {
+	margin-top: 20px;
+}
+
+.password-change-form .form-group {
+	margin-bottom: 20px;
+}
+
+.password-change-form label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 600;
+	color: #333;
+	font-size: 14px;
+}
+
+.password-input-wrapper {
+	position: relative;
+	width: 100%;
+}
+
+.password-input-wrapper .settings-input {
+	padding-right: 50px;
+	width: 100%;
+}
+
+.password-toggle {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	font-size: 20px;
+	cursor: pointer;
+	padding: 4px 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: opacity 0.2s;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.password-toggle:hover {
+	opacity: 0.7;
+}
+
+.password-toggle:focus {
+	outline: none;
+}
+
+.password-toggle:active {
+	transform: translateY(-50%) scale(0.95);
+}
+
+.password-error {
+	animation: shake 0.3s;
+}
+
+.password-success {
+	animation: slideDown 0.3s;
+}
+
+@keyframes shake {
+	0%, 100% { transform: translateX(0); }
+	25% { transform: translateX(-10px); }
+	75% { transform: translateX(10px); }
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

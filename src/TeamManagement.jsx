@@ -172,7 +172,7 @@ export default function TeamManagement({ isOpen, onClose }) {
 
 			await setDoc(codeRef, codeData)
 
-			const inviteLink = `${window.location.origin}/?code=${code}`
+			const inviteLink = `${window.location.origin}/register?code=${code}`
 
 			console.log('📧 Wysyłam email...')
 			try {
@@ -524,7 +524,7 @@ export default function TeamManagement({ isOpen, onClose }) {
 									Anuluj
 								</button>
 								<button onClick={handleSavePermissions} className='save-permissions-btn'>
-									✓ Zapisz
+									✔ Zapisz
 								</button>
 							</div>
 						</div>

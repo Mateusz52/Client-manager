@@ -94,31 +94,34 @@ function ProtectedDashboard() {
 		return (
 			<div style={{ 
 				display: 'flex', 
-				justifyContent: 'center', 
+				flexDirection: 'column',
 				alignItems: 'center', 
+				justifyContent: 'center',
 				minHeight: '100vh',
 				padding: '20px',
-				background: '#f5f5f5'
+				textAlign: 'center',
+				background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+				color: 'white'
 			}}>
 				<div style={{
 					background: 'white',
-					borderRadius: '20px',
+					color: '#333',
 					padding: '40px',
+					borderRadius: '20px',
 					maxWidth: '500px',
-					textAlign: 'center',
-					boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+					boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
 				}}>
-					<div style={{ fontSize: '64px', marginBottom: '20px' }}>💳</div>
-					<h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#243c4c' }}>
-						Opłać plan aby kontynuować
+					<div style={{ fontSize: '64px', marginBottom: '20px' }}>🎯</div>
+					<h2 style={{ fontSize: '28px', marginBottom: '16px', fontWeight: '700' }}>
+						Wybierz plan aby kontynuować
 					</h2>
-					<p style={{ color: '#666', marginBottom: '24px' }}>
-						Aby korzystać z aplikacji, musisz wybrać i opłacić plan dopasowany do Twojej firmy.
+					<p style={{ fontSize: '16px', color: '#666', marginBottom: '32px' }}>
+						Aby korzystać z aplikacji, musisz wybrać plan subskrypcji
 					</p>
 					<button 
 						onClick={() => window.location.href = '/pricing'}
 						style={{
-							padding: '14px 32px',
+							padding: '16px 32px',
 							background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
 							color: 'white',
 							border: 'none',
@@ -126,7 +129,8 @@ function ProtectedDashboard() {
 							fontSize: '16px',
 							fontWeight: '700',
 							cursor: 'pointer',
-							marginBottom: '12px',
+							boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+							marginBottom: '16px',
 							width: '100%'
 						}}>
 						💳 Wybierz plan
@@ -219,15 +223,15 @@ function App() {
 				{/* Landing - osobna route */}
 				<Route path="/landing" element={<LandingPage />} />
 				
-				{/* Settings - tylko dla zalogowanych */}
+				{/* Auth */}
+				<Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
+				<Route path="/register" element={!currentUser ? <Register /> : <Navigate to="/" />} />
+				
+				{/* Settings - NOWA ROUTE! */}
 				<Route 
 					path="/settings" 
 					element={currentUser ? <Settings /> : <Navigate to="/login" />} 
 				/>
-				
-				{/* Auth */}
-				<Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
-				<Route path="/register" element={!currentUser ? <Register /> : <Navigate to="/" />} />
 				
 				{/* Plan selection flow */}
 				<Route 

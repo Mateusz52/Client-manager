@@ -1,420 +1,476 @@
-import { getOrderTotalValue } from './linkedOrderHelpers'
+import { useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
+import { db } from './firebase'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth'
+import './Settings.css'
 
-export default function Statistics({ orders, isOpen, onClose, productTypes }) {
-	// Filtruj tylko zrealizowane zamówienia
-	const completedOrders = orders.filter(order => order.status === 'zrealizowane' || order.status === 'opłacone')
+export default function Settings() {
+	const { currentUser, userProfile, logout } = useAuth()
+	const [activeTab, setActiveTab] = useState('account')
+	const [orgData, setOrgData] = useState(null)
+	const [loading, setLoading] = useState(true)
 	
+	// Account form
+	const [displayName, setDisplayName] = useState('')
+	const [email, setEmail] = useState('')
+	const [saving, setSaving] = useState(false)
 
-	// Podziel na sprzedaż i zakup
-	const salesOrders = completedOrders.filter(order => (order.transactionType || 'sprzedaz') === 'sprzedaz')
-	const purchaseOrders = completedOrders.filter(order => order.transactionType === 'zakup')
+	// Password change form
+	const [currentPassword, setCurrentPassword] = useState('')
+	const [newPassword, setNewPassword] = useState('')
+	const [confirmNewPassword, setConfirmNewPassword] = useState('')
+	const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+	const [showNewPassword, setShowNewPassword] = useState(false)
+	const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false)
+	const [changingPassword, setChangingPassword] = useState(false)
+	const [passwordError, setPasswordError] = useState('')
+	const [passwordSuccess, setPasswordSuccess] = useState('')
 
-	// Filtruj zrealizowane zamówienia z bieżącego roku
-	const currentYear = new Date().getFullYear()
-	const completedOrdersThisYear = completedOrders.filter(order => {
-		if (!order.dateStart) return false
-		const orderYear = new Date(order.dateStart).getFullYear()
-		return orderYear === currentYear
-	})
+	useEffect(() => {
+		if (currentUser && userProfile) {
+			setDisplayName(userProfile.displayName || '')
+			setEmail(currentUser.email || '')
+			loadOrgData()
+		}
+	}, [currentUser, userProfile])
 
-	const salesOrdersThisYear = salesOrders.filter(order => {
-		if (!order.dateStart) return false
-		const orderYear = new Date(order.dateStart).getFullYear()
-		return orderYear === currentYear
-	})
+	const loadOrgData = async () => {
+		try {
+			const orgId = userProfile?.currentOrganizationId
+			if (!orgId) {
+				setLoading(false)
+				return
+			}
 
-	const purchaseOrdersThisYear = purchaseOrders.filter(order => {
-		if (!order.dateStart) return false
-		const orderYear = new Date(order.dateStart).getFullYear()
-		return orderYear === currentYear
-	})
+			const orgRef = doc(db, 'organizations', orgId)
+			const orgSnap = await getDoc(orgRef)
 
-	// Obliczenia statystyk (tylko zrealizowane)
-	const totalOrders = completedOrders.length
-	const totalSales = salesOrders.length
-	const totalPurchases = purchaseOrders.length
-	const totalOrdersThisYear = completedOrdersThisYear.length
+			if (orgSnap.exists()) {
+				setOrgData(orgSnap.data())
+			}
+			setLoading(false)
+		} catch (error) {
+			console.error('Błąd ładowania danych:', error)
+			setLoading(false)
+		}
+	}
 
-	// Suma wszystkich produktów (ilość) - Z LINKED PRODUCTS!
-	const totalProducts = completedOrders.reduce((sum, order) => {
-		let quantity = parseInt(order.quantity) || 0
-		
-		// Dodaj ilości z linked products
-		if (order.isLinked && order.linkedProducts && Array.isArray(order.linkedProducts)) {
-			order.linkedProducts.forEach(product => {
-				quantity += parseInt(product.quantity) || 0
+	const handleSaveAccount = async (e) => {
+		e.preventDefault()
+		setSaving(true)
+
+		try {
+			const userRef = doc(db, 'users', currentUser.uid)
+			await updateDoc(userRef, {
+				displayName: displayName,
+				updatedAt: new Date().toISOString()
 			})
+
+			alert('✅ Dane zapisane!')
+			setSaving(false)
+		} catch (error) {
+			console.error('Błąd zapisu:', error)
+			alert('❌ Błąd zapisu danych')
+			setSaving(false)
 		}
-		
-		return sum + quantity
-	}, 0)
+	}
 
-	const totalSalesProducts = salesOrders.reduce((sum, order) => {
-		let quantity = parseInt(order.quantity) || 0
-		
-		// Dodaj ilości z linked products
-		if (order.isLinked && order.linkedProducts && Array.isArray(order.linkedProducts)) {
-			order.linkedProducts.forEach(product => {
-				quantity += parseInt(product.quantity) || 0
-			})
+	const handleChangePassword = async (e) => {
+		e.preventDefault()
+		setPasswordError('')
+		setPasswordSuccess('')
+
+		// Walidacja
+		if (!currentPassword) {
+			setPasswordError('Wpisz aktualne hasło')
+			return
 		}
-		
-		return sum + quantity
-	}, 0)
 
-	const totalPurchasesProducts = purchaseOrders.reduce((sum, order) => {
-		let quantity = parseInt(order.quantity) || 0
-		
-		// Dodaj ilości z linked products
-		if (order.isLinked && order.linkedProducts && Array.isArray(order.linkedProducts)) {
-			order.linkedProducts.forEach(product => {
-				quantity += parseInt(product.quantity) || 0
-			})
+		if (!newPassword) {
+			setPasswordError('Wpisz nowe hasło')
+			return
 		}
-		
-		return sum + quantity
-	}, 0)
 
-	// Łączna wartość z obsługą różnych walut - SPRZEDAŻ (Z LINKED PRODUCTS!)
-	const salesValuesByCurrency = salesOrders.reduce((acc, order) => {
-		const totalValue = getOrderTotalValue(order) // ✅ UŻYJ HELPER FUNCTION
-		const currency = order.currency || productTypes?.find(pt => pt.name === order.type)?.currency || 'PLN'
-
-		if (!acc[currency]) {
-			acc[currency] = 0
+		if (newPassword.length < 6) {
+			setPasswordError('Nowe hasło musi mieć minimum 6 znaków')
+			return
 		}
-		acc[currency] += totalValue
 
-		return acc
-	}, {})
-
-	// Łączna wartość z obsługą różnych walut - ZAKUP (Z LINKED PRODUCTS!)
-	const purchaseValuesByCurrency = purchaseOrders.reduce((acc, order) => {
-		const totalValue = getOrderTotalValue(order) // ✅ UŻYJ HELPER FUNCTION
-		const currency = order.currency || productTypes?.find(pt => pt.name === order.type)?.currency || 'PLN'
-
-		if (!acc[currency]) {
-			acc[currency] = 0
+		if (newPassword !== confirmNewPassword) {
+			setPasswordError('Nowe hasła nie są identyczne')
+			return
 		}
-		acc[currency] += totalValue
 
-		return acc
-	}, {})
+		if (currentPassword === newPassword) {
+			setPasswordError('Nowe hasło musi być inne niż aktualne')
+			return
+		}
 
-	// Statystyki według typu produktu - SPRZEDAŻ (Z LINKED PRODUCTS!)
-	const salesStatsByProductType = salesOrders.reduce((acc, order) => {
-		// Główny produkt
-		const productName = order.type || 'Nieznany'
-		const currency = order.currency || productTypes?.find(pt => pt.name === productName)?.currency || 'PLN'
-		const unit = order.unit || productTypes?.find(pt => pt.name === productName)?.unit || 'szt'
-		
-		if (!acc[productName]) {
-			acc[productName] = {
-				count: 0,
-				totalQuantity: 0,
-				totalValue: 0,
-				currency: currency,
-				unit: unit
+		setChangingPassword(true)
+
+		try {
+			// Krok 1: Reauthentication (weryfikacja starego hasła)
+			const credential = EmailAuthProvider.credential(
+				currentUser.email,
+				currentPassword
+			)
+			await reauthenticateWithCredential(currentUser, credential)
+
+			// Krok 2: Zmiana hasła
+			await updatePassword(currentUser, newPassword)
+
+			// Sukces!
+			setPasswordSuccess('✅ Hasło zostało zmienione!')
+			setCurrentPassword('')
+			setNewPassword('')
+			setConfirmNewPassword('')
+			
+			// Ukryj komunikat po 5 sekundach
+			setTimeout(() => setPasswordSuccess(''), 5000)
+
+		} catch (error) {
+			console.error('Błąd zmiany hasła:', error)
+			
+			if (error.code === 'auth/wrong-password') {
+				setPasswordError('❌ Aktualne hasło jest nieprawidłowe')
+			} else if (error.code === 'auth/too-many-requests') {
+				setPasswordError('❌ Zbyt wiele prób. Spróbuj później')
+			} else if (error.code === 'auth/requires-recent-login') {
+				setPasswordError('❌ Wyloguj się i zaloguj ponownie, aby zmienić hasło')
+			} else {
+				setPasswordError('❌ Błąd zmiany hasła. Spróbuj ponownie')
 			}
 		}
 
-		acc[productName].count += 1
-		acc[productName].totalQuantity += parseInt(order.quantity) || 0
-		
-		const price = parseFloat(order.price) || 0
-		const quantity = parseInt(order.quantity) || 0
-		acc[productName].totalValue += price * quantity
+		setChangingPassword(false)
+	}
 
-		// ✅ DODAJ LINKED PRODUCTS
-		if (order.isLinked && order.linkedProducts && Array.isArray(order.linkedProducts)) {
-			order.linkedProducts.forEach(product => {
-				const linkedProductName = product.type || 'Nieznany'
-				const linkedCurrency = product.currency || 'PLN'
-				const linkedUnit = product.unit || 'szt'
-				
-				if (!acc[linkedProductName]) {
-					acc[linkedProductName] = {
-						count: 0,
-						totalQuantity: 0,
-						totalValue: 0,
-						currency: linkedCurrency,
-						unit: linkedUnit
-					}
-				}
+	const handleCancelSubscription = async () => {
+		if (!confirm('Czy na pewno chcesz anulować subskrypcję?\n\nDostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.')) {
+			return
+		}
 
-				acc[linkedProductName].count += 1
-				acc[linkedProductName].totalQuantity += parseInt(product.quantity) || 0
-				
-				const linkedPrice = parseFloat(product.price) || 0
-				const linkedQuantity = parseInt(product.quantity) || 0
-				acc[linkedProductName].totalValue += linkedPrice * linkedQuantity
+		try {
+			const orgRef = doc(db, 'organizations', userProfile.currentOrganizationId)
+			await updateDoc(orgRef, {
+				'subscription.cancelAtPeriodEnd': true,
+				updatedAt: new Date().toISOString()
 			})
+
+			alert('✅ Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego.')
+			loadOrgData()
+		} catch (error) {
+			console.error('Błąd anulowania:', error)
+			alert('❌ Błąd anulowania subskrypcji')
 		}
+	}
 
-		return acc
-	}, {})
-
-	// Statystyki według typu produktu - ZAKUP (Z LINKED PRODUCTS!)
-	const purchaseStatsByProductType = purchaseOrders.reduce((acc, order) => {
-		// Główny produkt
-		const productName = order.type || 'Nieznany'
-		const currency = order.currency || productTypes?.find(pt => pt.name === productName)?.currency || 'PLN'
-		const unit = order.unit || productTypes?.find(pt => pt.name === productName)?.unit || 'szt'
-		
-		if (!acc[productName]) {
-			acc[productName] = {
-				count: 0,
-				totalQuantity: 0,
-				totalValue: 0,
-				currency: currency,
-				unit: unit
-			}
-		}
-
-		acc[productName].count += 1
-		acc[productName].totalQuantity += parseInt(order.quantity) || 0
-		
-		const price = parseFloat(order.price) || 0
-		const quantity = parseInt(order.quantity) || 0
-		acc[productName].totalValue += price * quantity
-
-		// ✅ DODAJ LINKED PRODUCTS
-		if (order.isLinked && order.linkedProducts && Array.isArray(order.linkedProducts)) {
-			order.linkedProducts.forEach(product => {
-				const linkedProductName = product.type || 'Nieznany'
-				const linkedCurrency = product.currency || 'PLN'
-				const linkedUnit = product.unit || 'szt'
-				
-				if (!acc[linkedProductName]) {
-					acc[linkedProductName] = {
-						count: 0,
-						totalQuantity: 0,
-						totalValue: 0,
-						currency: linkedCurrency,
-						unit: linkedUnit
-					}
-				}
-
-				acc[linkedProductName].count += 1
-				acc[linkedProductName].totalQuantity += parseInt(product.quantity) || 0
-				
-				const linkedPrice = parseFloat(product.price) || 0
-				const linkedQuantity = parseInt(product.quantity) || 0
-				acc[linkedProductName].totalValue += linkedPrice * linkedQuantity
-			})
-		}
-
-		return acc
-	}, {})
-
-	if (!isOpen) return null
+	if (loading) {
+		return <div className="settings-loading">Ładowanie ustawień...</div>
+	}
 
 	return (
-		<>
-			<div className='statistics-overlay' onClick={onClose}></div>
-			<div className={`statistics-panel ${isOpen ? 'open' : ''}`}>
-				<div className='statistics-header'>
-					<h2 className='statistics-title'>Statystyki</h2>
-					<button className='close-stats-btn' onClick={onClose}>
-						✕
-					</button>
-				</div>
+		<div className="settings-page">
+			<div className="settings-header">
+				<h1>⚙️ Ustawienia</h1>
+				<p>Zarządzaj swoim kontem i subskrypcją</p>
+			</div>
 
-				<div className='statistics-content'>
-					{totalOrders === 0 ? (
-						<div className='no-stats'>
-							<p>Brak danych do wyświetlenia</p>
-							<span>Zrealizuj zamówienia, aby zobaczyć statystyki</span>
+			<div className="settings-tabs">
+				<button 
+					className={`settings-tab ${activeTab === 'account' ? 'active' : ''}`}
+					onClick={() => setActiveTab('account')}>
+					👤 Konto
+				</button>
+				<button 
+					className={`settings-tab ${activeTab === 'subscription' ? 'active' : ''}`}
+					onClick={() => setActiveTab('subscription')}>
+					💳 Subskrypcja
+				</button>
+				<button 
+					className={`settings-tab ${activeTab === 'security' ? 'active' : ''}`}
+					onClick={() => setActiveTab('security')}>
+					🔒 Bezpieczeństwo
+				</button>
+			</div>
+
+			<div className="settings-content">
+				{/* KONTO */}
+				{activeTab === 'account' && (
+					<div className="settings-section">
+						<h2>Informacje o koncie</h2>
+						
+						<form onSubmit={handleSaveAccount}>
+							<div className="form-group">
+								<label>Imię i nazwisko</label>
+								<input
+									type="text"
+									value={displayName}
+									onChange={(e) => setDisplayName(e.target.value)}
+									className="settings-input"
+									required
+								/>
+							</div>
+
+							<div className="form-group">
+								<label>Email</label>
+								<input
+									type="email"
+									value={email}
+									className="settings-input"
+									disabled
+								/>
+								<small>Email nie może być zmieniony</small>
+							</div>
+
+							<button type="submit" className="btn-save" disabled={saving}>
+								{saving ? 'Zapisywanie...' : '💾 Zapisz zmiany'}
+							</button>
+						</form>
+
+						<div className="danger-zone">
+							<h3>Strefa niebezpieczna</h3>
+							<p>Usuń swoje konto na zawsze. Ta akcja jest nieodwracalna.</p>
+							<button className="btn-danger" onClick={() => alert('Funkcja wkrótce')}>
+								🗑️ Usuń konto
+							</button>
 						</div>
-					) : (
-						<>
-							<div className='stats-info-banner'>
-								<span>✅ Statystyki obejmują tylko zrealizowane zamówienia</span>
-							</div>
+					</div>
+				)}
 
-							{/* Statystyki ogólne */}
-							<div className='stats-grid'>
-								<div className='stat-card stat-primary'>
-									<div className='stat-icon'>📦</div>
-									<div className='stat-content'>
-										<div className='stat-value'>{totalOrders}</div>
-										<div className='stat-label'>Wszystkie zamówienia</div>
+				{/* SUBSKRYPCJA */}
+				{activeTab === 'subscription' && (
+					<div className="settings-section">
+						<h2>Twoja subskrypcja</h2>
+
+						{orgData?.subscription ? (
+							<>
+								<div className="subscription-card">
+									<div className="subscription-header">
+										<h3>{orgData.name}</h3>
+										<span className={`subscription-status ${orgData.subscription.status}`}>
+											{orgData.subscription.status === 'trialing' ? '🎁 Okres próbny' : 
+											 orgData.subscription.status === 'active' ? '✅ Aktywna' : 
+											 orgData.subscription.status === 'past_due' ? '⚠️ Zaległość' : 
+											 '❌ Nieaktywna'}
+										</span>
 									</div>
-								</div>
 
-								<div className='stat-card stat-success'>
-									<div className='stat-icon'>📤</div>
-									<div className='stat-content'>
-										<div className='stat-value'>{totalSales}</div>
-										<div className='stat-label'>Sprzedaż</div>
-									</div>
-								</div>
-
-								<div className='stat-card stat-info'>
-									<div className='stat-icon'>📥</div>
-									<div className='stat-content'>
-										<div className='stat-value'>{totalPurchases}</div>
-										<div className='stat-label'>Zakup</div>
-									</div>
-								</div>
-							</div>
-
-							{/* SPRZEDAŻ */}
-							{totalSales > 0 && (
-								<>
-									<div className='status-stats'>
-										<h3 className='status-stats-title'>📤 Sprzedaż</h3>
-										
-										<div className='stats-grid'>
-											<div className='stat-card stat-success'>
-												<div className='stat-icon'>📊</div>
-												<div className='stat-content'>
-													<div className='stat-value'>{totalSalesProducts}</div>
-													<div className='stat-label'>Suma produktów</div>
-												</div>
-											</div>
-
-											{Object.entries(salesValuesByCurrency).map(([currency, value]) => (
-												<div className='stat-card stat-success' key={currency}>
-													<div className='stat-icon'>💰</div>
-													<div className='stat-content'>
-														<div className='stat-value'>{value.toFixed(2)} {currency}</div>
-														<div className='stat-label'>Łączna wartość</div>
-													</div>
-												</div>
-											))}
+									<div className="subscription-details">
+										<div className="detail-row">
+											<span className="detail-label">Plan:</span>
+											<span className="detail-value">
+												{orgData.subscription.plan === 'monthly' ? 'Miesięczny' :
+												 orgData.subscription.plan === 'semiannual' ? 'Półroczny' :
+												 orgData.subscription.plan === 'annual' ? 'Roczny' : 'Nieznany'}
+											</span>
 										</div>
+										<div className="detail-row">
+											<span className="detail-label">Cena:</span>
+											<span className="detail-value">{orgData.subscription.price} zł/{orgData.subscription.interval === 'month' ? 'miesiąc' : 'rok'}</span>
+										</div>
+										<div className="detail-row">
+											<span className="detail-label">Następna płatność:</span>
+											<span className="detail-value">
+												{new Date(orgData.subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
+											</span>
+										</div>
+										{orgData.subscription.status === 'trialing' && (
+											<div className="detail-row">
+												<span className="detail-label">Koniec okresu próbnego:</span>
+												<span className="detail-value">
+													{new Date(orgData.subscription.trialEndsAt).toLocaleDateString('pl-PL')}
+												</span>
+											</div>
+										)}
+										<div className="detail-row">
+											<span className="detail-label">Limit organizacji:</span>
+											<span className="detail-value">
+												{orgData.limits?.maxOrganizations === 999 ? 'Nielimitowane' : orgData.limits?.maxOrganizations || 1}
+											</span>
+										</div>
+									</div>
 
-										{/* Rozbicie według produktów - SPRZEDAŻ */}
-										{Object.keys(salesStatsByProductType).length > 0 && (
-											<>
-												<h4 className='subsection-title'>Rozbicie według produktów</h4>
-												<div className='product-stats-grid'>
-													{Object.entries(salesStatsByProductType).map(([productName, stats]) => (
-														<div className='product-stat-card sale-card' key={productName}>
-															<h4 className='product-stat-name'>{productName}</h4>
-															<div className='product-stat-details'>
-																<div className='product-stat-item'>
-																	<span className='product-stat-label'>Zamówienia:</span>
-																	<span className='product-stat-value'>{stats.count}</span>
-																</div>
-																<div className='product-stat-item'>
-																	<span className='product-stat-label'>Ilość ({stats.unit}):</span>
-																	<span className='product-stat-value'>{stats.totalQuantity}</span>
-																</div>
-																<div className='product-stat-item'>
-																	<span className='product-stat-label'>Wartość:</span>
-																	<span className='product-stat-value'>
-																		{stats.totalValue.toFixed(2)} {stats.currency}
-																	</span>
-																</div>
-															</div>
-														</div>
-													))}
-												</div>
-											</>
+									<div className="subscription-actions">
+										<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+											📝 Zmień plan
+										</button>
+										{!orgData.subscription.cancelAtPeriodEnd && (
+											<button className="btn-danger" onClick={handleCancelSubscription}>
+												🚫 Anuluj subskrypcję
+											</button>
+										)}
+										{orgData.subscription.cancelAtPeriodEnd && (
+											<div className="cancel-notice">
+												⚠️ Subskrypcja zostanie anulowana {new Date(orgData.subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
+											</div>
 										)}
 									</div>
-								</>
-							)}
+								</div>
 
-							{/* ZAKUP */}
-							{totalPurchases > 0 && (
-								<>
-									<div className='status-stats'>
-										<h3 className='status-stats-title'>📥 Zakup</h3>
-										
-										<div className='stats-grid'>
-											<div className='stat-card stat-info'>
-												<div className='stat-icon'>📊</div>
-												<div className='stat-content'>
-													<div className='stat-value'>{totalPurchasesProducts}</div>
-													<div className='stat-label'>Suma produktów</div>
-												</div>
-											</div>
+								<div className="payment-history">
+									<h3>Historia płatności</h3>
+									<p>Brak płatności (okres próbny)</p>
+								</div>
+							</>
+						) : (
+							<div className="no-subscription">
+								<p>Nie masz aktywnej subskrypcji</p>
+								<button className="btn-primary" onClick={() => window.location.href = '/pricing'}>
+									Wybierz plan
+								</button>
+							</div>
+						)}
+					</div>
+				)}
 
-											{Object.entries(purchaseValuesByCurrency).map(([currency, value]) => (
-												<div className='stat-card stat-info' key={currency}>
-													<div className='stat-icon'>💰</div>
-													<div className='stat-content'>
-														<div className='stat-value'>{value.toFixed(2)} {currency}</div>
-														<div className='stat-label'>Łączna wartość</div>
-													</div>
-												</div>
-											))}
-										</div>
+				{/* BEZPIECZEŃSTWO */}
+				{activeTab === 'security' && (
+					<div className="settings-section">
+						<h2>Bezpieczeństwo</h2>
 
-										{/* Rozbicie według produktów - ZAKUP */}
-										{Object.keys(purchaseStatsByProductType).length > 0 && (
-											<>
-												<h4 className='subsection-title'>Rozbicie według produktów</h4>
-												<div className='product-stats-grid'>
-													{Object.entries(purchaseStatsByProductType).map(([productName, stats]) => (
-														<div className='product-stat-card purchase-card' key={productName}>
-															<h4 className='product-stat-name'>{productName}</h4>
-															<div className='product-stat-details'>
-																<div className='product-stat-item'>
-																	<span className='product-stat-label'>Zamówienia:</span>
-																	<span className='product-stat-value'>{stats.count}</span>
-																</div>
-																<div className='product-stat-item'>
-																	<span className='product-stat-label'>Ilość ({stats.unit}):</span>
-																	<span className='product-stat-value'>{stats.totalQuantity}</span>
-																</div>
-																<div className='product-stat-item'>
-																	<span className='product-stat-label'>Wartość:</span>
-																	<span className='product-stat-value'>
-																		{stats.totalValue.toFixed(2)} {stats.currency}
-																	</span>
-																</div>
-															</div>
-														</div>
-													))}
-												</div>
-											</>
-										)}
+						{/* ZMIANA HASŁA - FORMULARZ */}
+						<div className="security-item password-change-section">
+							<h3>Zmiana hasła</h3>
+							<p>Zaktualizuj swoje hasło aby zachować bezpieczeństwo konta</p>
+
+							<form onSubmit={handleChangePassword} className="password-change-form">
+								{/* Aktualne hasło */}
+								<div className="form-group">
+									<label>Aktualne hasło</label>
+									<div className="password-input-wrapper">
+										<input
+											type={showCurrentPassword ? "text" : "password"}
+											placeholder="Wpisz aktualne hasło"
+											value={currentPassword}
+											onChange={(e) => setCurrentPassword(e.target.value)}
+											className="settings-input"
+											disabled={changingPassword}
+										/>
+										<button
+											type="button"
+											className="password-toggle"
+											onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+											tabIndex={-1}>
+											{showCurrentPassword ? '🙈' : '👁️'}
+										</button>
 									</div>
-								</>
-							)}
+								</div>
 
-							{/* Statystyki z bieżącego roku */}
-							<div className='status-stats'>
-								<h3 className='status-stats-title'>🎯 Zrealizowane w {currentYear} roku</h3>
-
-								{totalOrdersThisYear === 0 ? (
-									<div className='no-stats-year'>
-										<p>Brak zrealizowanych zamówień z {currentYear} roku</p>
+								{/* Nowe hasło */}
+								<div className="form-group">
+									<label>Nowe hasło (min. 6 znaków)</label>
+									<div className="password-input-wrapper">
+										<input
+											type={showNewPassword ? "text" : "password"}
+											placeholder="Wpisz nowe hasło"
+											value={newPassword}
+											onChange={(e) => setNewPassword(e.target.value)}
+											className="settings-input"
+											disabled={changingPassword}
+											minLength={6}
+										/>
+										<button
+											type="button"
+											className="password-toggle"
+											onClick={() => setShowNewPassword(!showNewPassword)}
+											tabIndex={-1}>
+											{showNewPassword ? '🙈' : '👁️'}
+										</button>
 									</div>
-								) : (
-									<div className='year-stats-grid'>
-										<div className='year-stats-card'>
-											<div className='year-stat-icon'>📦</div>
-											<div className='year-stat-content'>
-												<div className='year-stat-value'>{totalOrdersThisYear}</div>
-												<div className='year-stat-label'>Wszystkich</div>
-											</div>
-										</div>
-										<div className='year-stats-card sale-year-card'>
-											<div className='year-stat-icon'>📤</div>
-											<div className='year-stat-content'>
-												<div className='year-stat-value'>{salesOrdersThisYear.length}</div>
-												<div className='year-stat-label'>Sprzedaż</div>
-											</div>
-										</div>
-										<div className='year-stats-card purchase-year-card'>
-											<div className='year-stat-icon'>📥</div>
-											<div className='year-stat-content'>
-												<div className='year-stat-value'>{purchaseOrdersThisYear.length}</div>
-												<div className='year-stat-label'>Zakup</div>
-											</div>
-										</div>
+								</div>
+
+								{/* Powtórz nowe hasło */}
+								<div className="form-group">
+									<label>Powtórz nowe hasło</label>
+									<div className="password-input-wrapper">
+										<input
+											type={showConfirmNewPassword ? "text" : "password"}
+											placeholder="Powtórz nowe hasło"
+											value={confirmNewPassword}
+											onChange={(e) => setConfirmNewPassword(e.target.value)}
+											className="settings-input"
+											disabled={changingPassword}
+											minLength={6}
+										/>
+										<button
+											type="button"
+											className="password-toggle"
+											onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+											tabIndex={-1}>
+											{showConfirmNewPassword ? '🙈' : '👁️'}
+										</button>
+									</div>
+								</div>
+
+								{/* Błąd */}
+								{passwordError && (
+									<div className="password-error" style={{
+										padding: '12px',
+										background: '#fee',
+										border: '1px solid #fcc',
+										borderRadius: '8px',
+										color: '#c33',
+										fontSize: '14px',
+										marginBottom: '16px'
+									}}>
+										{passwordError}
 									</div>
 								)}
-							</div>
-						</>
-					)}
-				</div>
+
+								{/* Sukces */}
+								{passwordSuccess && (
+									<div className="password-success" style={{
+										padding: '12px',
+										background: '#efe',
+										border: '1px solid #cfc',
+										borderRadius: '8px',
+										color: '#383',
+										fontSize: '14px',
+										marginBottom: '16px'
+									}}>
+										{passwordSuccess}
+									</div>
+								)}
+
+								{/* Przycisk */}
+								<button 
+									type="submit" 
+									className="btn-save" 
+									disabled={changingPassword}
+									style={{ marginTop: '8px' }}>
+									{changingPassword ? '⏳ Zmieniam hasło...' : '🔒 Zmień hasło'}
+								</button>
+							</form>
+						</div>
+
+						<div className="security-item">
+							<h3>Dwuetapowa weryfikacja (2FA)</h3>
+							<p>Dodaj dodatkową warstwę zabezpieczeń do swojego konta</p>
+							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+								🛡️ Włącz 2FA
+							</button>
+						</div>
+
+						<div className="security-item">
+							<h3>Aktywne sesje</h3>
+							<p>Zarządzaj urządzeniami zalogowanymi do Twojego konta</p>
+							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+								📱 Pokaż sesje
+							</button>
+						</div>
+
+						<div className="security-item">
+							<h3>Wyloguj ze wszystkich urządzeń</h3>
+							<p>Wyloguj się ze wszystkich urządzeń oprócz tego</p>
+							<button className="btn-danger" onClick={logout}>
+								🚪 Wyloguj wszędzie
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
-		</>
+		</div>
 	)
 }

@@ -194,3 +194,47 @@
 		font-size: 28px;
 	}
 }
+
+/* ==========================================
+   DODAJ DO /src/Auth.css NA KOŃCU
+   Style dla ikonki pokazywania hasła
+   ========================================== */
+
+.password-input-wrapper {
+	position: relative;
+	width: 100%;
+}
+
+.password-input-wrapper .auth-input {
+	padding-right: 50px;
+}
+
+.password-toggle {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	font-size: 20px;
+	cursor: pointer;
+	padding: 4px 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: opacity 0.2s;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.password-toggle:hover {
+	opacity: 0.7;
+}
+
+.password-toggle:focus {
+	outline: none;
+}
+
+.password-toggle:active {
+	transform: translateY(-50%) scale(0.95);
+}
