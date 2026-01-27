@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { db } from './firebase'
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDoc } from 'firebase/firestore'
+import { showToast } from './simpleAlerts'
 import AddForm from './AddForm'
 import Header from './Header'
 import OrdersTable from './OrdersTable'
@@ -22,6 +23,7 @@ export default function Dashboard() {
 		searchTerm: '',
 		dateFrom: '',
 		dateTo: '',
+		dateType: 'dateEnd', // ✅ DODANE - domyślnie data wysyłki
 		status: 'all',
 		transactionType: 'all',
 	})
@@ -86,13 +88,16 @@ export default function Dashboard() {
 
 		try {
 			if (editingId) {
+				// ✅ EDYCJA - DODANY TOAST
 				const orderRef = doc(db, 'organizations', organizationId, 'orders', editingId)
 				await updateDoc(orderRef, {
 					...orderData,
 					updatedAt: new Date().toISOString(),
 				})
 				setEditingId(null)
+				showToast('Zamówienie zaktualizowane!', 'success')
 			} else {
+				// ✅ DODANIE - DODANY TOAST
 				const ordersRef = collection(db, 'organizations', organizationId, 'orders')
 				await addDoc(ordersRef, {
 					...orderData,
@@ -100,10 +105,11 @@ export default function Dashboard() {
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 				})
+				showToast('Zamówienie dodane!', 'success')
 			}
 		} catch (error) {
 			console.error('Error adding/updating order:', error)
-			alert('WystÄ…piÅ‚ bÅ‚Ä…d. SprÃ³buj ponownie.')
+			showToast('Wystąpił błąd. Spróbuj ponownie.', 'error')
 		}
 	}
 
@@ -125,9 +131,10 @@ export default function Dashboard() {
 			await deleteDoc(orderRef)
 			setDeleteModalOpen(false)
 			setOrderToDelete(null)
+			showToast('Zamówienie usunięte!', 'success')
 		} catch (error) {
 			console.error('Error deleting order:', error)
-			alert('Nie udaÅ‚o siÄ™ usunÄ…Ä‡ zamÃ³wienia.')
+			showToast('Nie udało się usunąć zamówienia.', 'error')
 		}
 	}
 
@@ -154,9 +161,19 @@ export default function Dashboard() {
 				status: newStatus,
 				updatedAt: new Date().toISOString(),
 			})
+			
+			// ✅ ZMIANA STATUSU - DODANY TOAST
+			const statusNames = {
+				'w-trakcie': 'W trakcie',
+				'zrealizowane': 'Zrealizowane',
+				'anulowane': 'Anulowane',
+				'wyslany': 'Wysłany',
+				'wyprodukowane': 'Wyprodukowane'
+			}
+			showToast(`Status zmieniony na: ${statusNames[newStatus] || newStatus}`, 'success')
 		} catch (error) {
 			console.error('Error updating status:', error)
-			alert('Nie udaÅ‚o siÄ™ zmieniÄ‡ statusu.')
+			showToast('Nie udało się zmienić statusu.', 'error')
 		}
 	}
 
@@ -200,8 +217,12 @@ export default function Dashboard() {
 			}
 
 			const matchesSearch = matchesBasicFields || matchesProductDetails
-			const matchesDateFrom = filters.dateFrom ? order.dateStart >= filters.dateFrom : true
-			const matchesDateTo = filters.dateTo ? order.dateStart <= filters.dateTo : true
+			
+			// ✅ UWZGLĘDNIAMY dateType - filtruj po dateStart lub dateEnd
+			const dateField = filters.dateType === 'dateEnd' ? order.dateEnd : order.dateStart
+			const matchesDateFrom = filters.dateFrom ? dateField >= filters.dateFrom : true
+			const matchesDateTo = filters.dateTo ? dateField <= filters.dateTo : true
+			
 			const matchesStatus = filters.status === 'all' ? true : order.status === filters.status
 			const matchesTransactionType =
 				filters.transactionType === 'all' ? true : (order.transactionType || 'sprzedaz') === filters.transactionType
@@ -245,7 +266,7 @@ export default function Dashboard() {
 				)}
 				{loading ? (
 					<div style={{ textAlign: 'center', padding: '40px', fontSize: '18px', color: '#6c757d' }}>
-						Åadowanie zamÃ³wieÅ„...
+						Ładowanie zamówień...
 					</div>
 				) : (
 					<OrdersTable
@@ -269,7 +290,7 @@ export default function Dashboard() {
 					isOpen={deleteModalOpen}
 					onClose={handleDeleteCancel}
 					onConfirm={handleDeleteConfirm}
-					message='Czy na pewno chcesz usunÄ…Ä‡ to zamÃ³wienie? Tej operacji nie moÅ¼na cofnÄ…Ä‡.'
+					message='Czy na pewno chcesz usunąć to zamówienie? Tej operacji nie można cofnąć.'
 				/>
 				<Statistics orders={orders} isOpen={statsOpen} onClose={() => setStatsOpen(false)} productTypes={productTypes} />
 				<ProductConfigurator isOpen={configOpen} onClose={() => setConfigOpen(false)} />

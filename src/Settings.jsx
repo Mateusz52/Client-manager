@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { db } from './firebase'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore'
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth'
 import './Settings.css'
 
 export default function Settings() {
-	const { currentUser, userProfile, logout } = useAuth()
+	const { currentUser, userProfile, logout, switchOrganization } = useAuth()
 	const [activeTab, setActiveTab] = useState('account')
 	const [orgData, setOrgData] = useState(null)
 	const [loading, setLoading] = useState(true)
+	const [isOwner, setIsOwner] = useState(false)
+	const [allOrgsData, setAllOrgsData] = useState([])  // ✅ NOWE - dane wszystkich organizacji
 	
 	// Account form
 	const [displayName, setDisplayName] = useState('')
@@ -27,31 +29,78 @@ export default function Settings() {
 	const [passwordError, setPasswordError] = useState('')
 	const [passwordSuccess, setPasswordSuccess] = useState('')
 
+	// Leave/Delete organization modals
+	const [showLeaveModal, setShowLeaveModal] = useState(false)
+	const [showDeleteModal, setShowDeleteModal] = useState(false)
+	const [selectedOrgForAction, setSelectedOrgForAction] = useState(null)  // ✅ NOWE - która org jest wybrana
+	const [confirmPassword, setConfirmPassword] = useState('')
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+	const [actionLoading, setActionLoading] = useState(false)
+	const [actionError, setActionError] = useState('')
+
 	useEffect(() => {
 		if (currentUser && userProfile) {
 			setDisplayName(userProfile.displayName || '')
 			setEmail(currentUser.email || '')
-			loadOrgData()
+			loadAllOrgsData()
 		}
 	}, [currentUser, userProfile])
 
-	const loadOrgData = async () => {
+	// ✅ NOWA FUNKCJA - Ładuje dane WSZYSTKICH organizacji użytkownika
+	const loadAllOrgsData = async () => {
 		try {
-			const orgId = userProfile?.currentOrganizationId
-			if (!orgId) {
+			const organizations = userProfile?.organizations || []
+			if (organizations.length === 0) {
 				setLoading(false)
 				return
 			}
 
-			const orgRef = doc(db, 'organizations', orgId)
-			const orgSnap = await getDoc(orgRef)
+			// Załaduj dane każdej organizacji
+			const orgsDataPromises = organizations.map(async (org) => {
+				try {
+					const orgRef = doc(db, 'organizations', org.id)
+					const orgSnap = await getDoc(orgRef)
+					
+					if (orgSnap.exists()) {
+						const data = orgSnap.data()
+						
+						// ✅ Pomiń organizacje oznaczone jako deleted
+						if (data.deleted === true) {
+							return null
+						}
+						
+						return {
+							...org,
+							orgData: data,
+							isOwner: data.ownerId === currentUser.uid
+						}
+					}
+					return null
+				} catch (error) {
+					console.error(`Błąd ładowania org ${org.id}:`, error)
+					return null
+				}
+			})
 
-			if (orgSnap.exists()) {
-				setOrgData(orgSnap.data())
+			const loadedOrgs = await Promise.all(orgsDataPromises)
+			
+			// ✅ Filtruj null (usunięte organizacje)
+			const validOrgs = loadedOrgs.filter(org => org !== null)
+			
+			setAllOrgsData(validOrgs)
+
+			// Ustaw dane obecnej organizacji
+			const currentOrgId = userProfile?.currentOrganizationId
+			const currentOrgData = validOrgs.find(o => o.id === currentOrgId)
+			
+			if (currentOrgData?.orgData) {
+				setOrgData(currentOrgData.orgData)
+				setIsOwner(currentOrgData.isOwner)
 			}
+
 			setLoading(false)
 		} catch (error) {
-			console.error('Błąd ładowania danych:', error)
+			console.error('Błąd ładowania danych organizacji:', error)
 			setLoading(false)
 		}
 	}
@@ -81,7 +130,6 @@ export default function Settings() {
 		setPasswordError('')
 		setPasswordSuccess('')
 
-		// Walidacja
 		if (!currentPassword) {
 			setPasswordError('Wpisz aktualne hasło')
 			return
@@ -110,23 +158,18 @@ export default function Settings() {
 		setChangingPassword(true)
 
 		try {
-			// Krok 1: Reauthentication (weryfikacja starego hasła)
 			const credential = EmailAuthProvider.credential(
 				currentUser.email,
 				currentPassword
 			)
 			await reauthenticateWithCredential(currentUser, credential)
-
-			// Krok 2: Zmiana hasła
 			await updatePassword(currentUser, newPassword)
 
-			// Sukces!
 			setPasswordSuccess('✅ Hasło zostało zmienione!')
 			setCurrentPassword('')
 			setNewPassword('')
 			setConfirmNewPassword('')
 			
-			// Ukryj komunikat po 5 sekundach
 			setTimeout(() => setPasswordSuccess(''), 5000)
 
 		} catch (error) {
@@ -147,6 +190,11 @@ export default function Settings() {
 	}
 
 	const handleCancelSubscription = async () => {
+		if (!isOwner) {
+			alert('❌ Tylko właściciel organizacji może zarządzać subskrypcją.')
+			return
+		}
+
 		if (!confirm('Czy na pewno chcesz anulować subskrypcję?\n\nDostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.')) {
 			return
 		}
@@ -159,10 +207,149 @@ export default function Settings() {
 			})
 
 			alert('✅ Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego.')
-			loadOrgData()
+			loadAllOrgsData()
 		} catch (error) {
 			console.error('Błąd anulowania:', error)
 			alert('❌ Błąd anulowania subskrypcji')
+		}
+	}
+
+	// Opuść organizację
+	const handleLeaveOrganization = async (e) => {
+		e.preventDefault()
+		setActionError('')
+		setActionLoading(true)
+
+		try {
+			const credential = EmailAuthProvider.credential(
+				currentUser.email,
+				confirmPassword
+			)
+			await reauthenticateWithCredential(currentUser, credential)
+
+			const orgIdToLeave = selectedOrgForAction?.id || userProfile.currentOrganizationId
+			const userRef = doc(db, 'users', currentUser.uid)
+
+			const updatedOrganizations = userProfile.organizations.filter(
+				org => org.id !== orgIdToLeave
+			)
+
+			if (updatedOrganizations.length === 0) {
+				await updateDoc(userRef, {
+					organizations: [],
+					currentOrganizationId: null,
+					updatedAt: new Date().toISOString()
+				})
+
+				alert('✅ Opuściłeś organizację.\n\nNie masz już dostępu do żadnej organizacji.')
+				await logout()
+				window.location.href = '/register'
+				return
+			}
+
+			const newOrgId = updatedOrganizations[0].id
+
+			await updateDoc(userRef, {
+				organizations: updatedOrganizations,
+				currentOrganizationId: newOrgId,
+				updatedAt: new Date().toISOString()
+			})
+
+			alert('✅ Opuściłeś organizację.\n\nPrzełączono na inną organizację.')
+			window.location.reload()
+
+		} catch (error) {
+			console.error('Błąd opuszczania organizacji:', error)
+			
+			if (error.code === 'auth/wrong-password') {
+				setActionError('❌ Nieprawidłowe hasło')
+			} else {
+				setActionError('❌ Błąd opuszczania organizacji')
+			}
+			setActionLoading(false)
+		}
+	}
+
+	// Usuń organizację
+	const handleDeleteOrganization = async (e) => {
+		e.preventDefault()
+		setActionError('')
+		setActionLoading(true)
+
+		try {
+			const credential = EmailAuthProvider.credential(
+				currentUser.email,
+				confirmPassword
+			)
+			await reauthenticateWithCredential(currentUser, credential)
+
+			const orgIdToDelete = selectedOrgForAction?.id || userProfile.currentOrganizationId
+
+			// ✅ ZMIANA - Nie usuwaj organizacji, tylko oznacz jako deleted
+			// Dzięki temu checkIfUserHasPaidPlan() nadal ją znajdzie!
+			const orgRef = doc(db, 'organizations', orgIdToDelete)
+			await updateDoc(orgRef, {
+				deleted: true,
+				deletedAt: new Date().toISOString(),
+				deletedBy: currentUser.uid,
+				updatedAt: new Date().toISOString()
+			})
+
+			// 2. Znajdź wszystkich użytkowników
+			const usersRef = collection(db, 'users')
+			const usersSnapshot = await getDocs(usersRef)
+
+			const updatePromises = []
+
+			usersSnapshot.forEach((userDoc) => {
+				const userData = userDoc.data()
+				const hasThisOrg = userData.organizations?.some(org => org.id === orgIdToDelete)
+
+				if (hasThisOrg) {
+					const updatedOrganizations = userData.organizations.filter(
+						org => org.id !== orgIdToDelete
+					)
+
+					let newCurrentOrgId = userData.currentOrganizationId
+					if (userData.currentOrganizationId === orgIdToDelete) {
+						newCurrentOrgId = updatedOrganizations.length > 0 ? updatedOrganizations[0].id : null
+					}
+
+					updatePromises.push(
+						updateDoc(doc(db, 'users', userDoc.id), {
+							organizations: updatedOrganizations,
+							currentOrganizationId: newCurrentOrgId,
+							updatedAt: new Date().toISOString()
+						})
+					)
+				}
+			})
+
+			await Promise.all(updatePromises)
+
+			// 3. Sprawdź czy owner ma inne organizacje
+			const ownerOrgs = userProfile.organizations.filter(org => org.id !== orgIdToDelete)
+
+			if (ownerOrgs.length === 0) {
+				// ✅ Owner usunął ostatnią organizację
+				// NIE WYLOGOWUJ - ma płatny plan!
+				alert('✅ Organizacja usunięta.\n\nMożesz utworzyć nową organizację z tym samym planem.')
+				window.location.href = '/'
+				return
+			}
+
+			alert('✅ Organizacja usunięta.')
+			window.location.reload()
+
+		} catch (error) {
+			console.error('Błąd usuwania organizacji:', error)
+			
+			if (error.code === 'auth/wrong-password') {
+				setActionError('❌ Nieprawidłowe hasło')
+			} else {
+				setActionError('❌ Błąd usuwania organizacji')
+			}
+			setActionLoading(false)
 		}
 	}
 
@@ -183,11 +370,15 @@ export default function Settings() {
 					onClick={() => setActiveTab('account')}>
 					👤 Konto
 				</button>
-				<button 
-					className={`settings-tab ${activeTab === 'subscription' ? 'active' : ''}`}
-					onClick={() => setActiveTab('subscription')}>
-					💳 Subskrypcja
-				</button>
+				
+				{isOwner && (
+					<button 
+						className={`settings-tab ${activeTab === 'subscription' ? 'active' : ''}`}
+						onClick={() => setActiveTab('subscription')}>
+						💳 Subskrypcja
+					</button>
+				)}
+				
 				<button 
 					className={`settings-tab ${activeTab === 'security' ? 'active' : ''}`}
 					onClick={() => setActiveTab('security')}>
@@ -229,18 +420,111 @@ export default function Settings() {
 							</button>
 						</form>
 
+						{!isOwner && (
+							<div style={{
+								marginTop: '32px',
+								padding: '20px',
+								background: '#e7f3ff',
+								border: '1px solid #0d6efd',
+								borderRadius: '12px'
+							}}>
+								<h3 style={{ margin: '0 0 12px 0', color: '#004085' }}>
+									👥 Członek zespołu
+								</h3>
+								<p style={{ margin: 0, color: '#004085', lineHeight: '1.6' }}>
+									Jesteś członkiem organizacji <strong>{orgData?.name}</strong>.<br/>
+									Subskrypcją zarządza właściciel organizacji.
+								</p>
+							</div>
+						)}
+
 						<div className="danger-zone">
 							<h3>Strefa niebezpieczna</h3>
-							<p>Usuń swoje konto na zawsze. Ta akcja jest nieodwracalna.</p>
-							<button className="btn-danger" onClick={() => alert('Funkcja wkrótce')}>
-								🗑️ Usuń konto
-							</button>
+							
+							{/* ✅ NOWE - LISTA WSZYSTKICH ORGANIZACJI */}
+							<div style={{ marginBottom: '32px' }}>
+								<h4 style={{ fontSize: '16px', marginBottom: '16px', color: '#333' }}>
+									📋 Twoje organizacje
+								</h4>
+								
+								{allOrgsData.map((org) => (
+									<div 
+										key={org.id}
+										style={{
+											padding: '16px',
+											background: org.id === userProfile.currentOrganizationId ? '#f0f9ff' : '#f8f9fa',
+											border: org.id === userProfile.currentOrganizationId ? '2px solid #0d6efd' : '1px solid #dee2e6',
+											borderRadius: '8px',
+											marginBottom: '12px'
+										}}>
+										<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+											<div style={{ flex: '1 1 300px' }}>
+												<div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+													<strong style={{ fontSize: '16px' }}>
+														{org.orgData?.name || org.name || 'Bez nazwy'}
+													</strong>
+													{org.id === userProfile.currentOrganizationId && (
+														<span style={{ 
+															background: '#0d6efd', 
+															color: 'white', 
+															padding: '2px 8px', 
+															borderRadius: '4px', 
+															fontSize: '12px',
+															fontWeight: '600'
+														}}>
+															Obecna
+														</span>
+													)}
+												</div>
+												<div style={{ fontSize: '14px', color: '#666' }}>
+													Rola: <strong>{org.role}</strong>
+												</div>
+											</div>
+											
+											<div>
+												{org.isOwner ? (
+													<button 
+														className="btn-danger"
+														onClick={() => {
+															setSelectedOrgForAction(org)
+															setShowDeleteModal(true)
+														}}
+														style={{ fontSize: '14px', padding: '8px 16px' }}>
+														🗑️ Usuń organizację
+													</button>
+												) : (
+													<button 
+														className="btn-danger"
+														onClick={() => {
+															setSelectedOrgForAction(org)
+															setShowLeaveModal(true)
+														}}
+														style={{ fontSize: '14px', padding: '8px 16px' }}>
+														🚪 Opuść organizację
+													</button>
+												)}
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+
+							{/* Usuń konto */}
+							<div>
+								<h4 style={{ fontSize: '16px', marginBottom: '8px' }}>Usuń konto</h4>
+								<p style={{ color: '#666', marginBottom: '12px' }}>
+									Usuń swoje konto na zawsze. Ta akcja jest nieodwracalna.
+								</p>
+								<button className="btn-danger" onClick={() => alert('Funkcja wkrótce')}>
+									🗑️ Usuń konto
+								</button>
+							</div>
 						</div>
 					</div>
 				)}
 
-				{/* SUBSKRYPCJA */}
-				{activeTab === 'subscription' && (
+				{/* SUBSKRYPCJA - TYLKO DLA OWNERÓW */}
+				{activeTab === 'subscription' && isOwner && (
 					<div className="settings-section">
 						<h2>Twoja subskrypcja</h2>
 
@@ -330,13 +614,11 @@ export default function Settings() {
 					<div className="settings-section">
 						<h2>Bezpieczeństwo</h2>
 
-						{/* ZMIANA HASŁA - FORMULARZ */}
 						<div className="security-item password-change-section">
 							<h3>Zmiana hasła</h3>
 							<p>Zaktualizuj swoje hasło aby zachować bezpieczeństwo konta</p>
 
 							<form onSubmit={handleChangePassword} className="password-change-form">
-								{/* Aktualne hasło */}
 								<div className="form-group">
 									<label>Aktualne hasło</label>
 									<div className="password-input-wrapper">
@@ -358,7 +640,6 @@ export default function Settings() {
 									</div>
 								</div>
 
-								{/* Nowe hasło */}
 								<div className="form-group">
 									<label>Nowe hasło (min. 6 znaków)</label>
 									<div className="password-input-wrapper">
@@ -381,7 +662,6 @@ export default function Settings() {
 									</div>
 								</div>
 
-								{/* Powtórz nowe hasło */}
 								<div className="form-group">
 									<label>Powtórz nowe hasło</label>
 									<div className="password-input-wrapper">
@@ -404,7 +684,6 @@ export default function Settings() {
 									</div>
 								</div>
 
-								{/* Błąd */}
 								{passwordError && (
 									<div className="password-error" style={{
 										padding: '12px',
@@ -419,7 +698,6 @@ export default function Settings() {
 									</div>
 								)}
 
-								{/* Sukces */}
 								{passwordSuccess && (
 									<div className="password-success" style={{
 										padding: '12px',
@@ -434,7 +712,6 @@ export default function Settings() {
 									</div>
 								)}
 
-								{/* Przycisk */}
 								<button 
 									type="submit" 
 									className="btn-save" 
@@ -471,6 +748,179 @@ export default function Settings() {
 					</div>
 				)}
 			</div>
+
+			{/* MODAL - OPUŚĆ ORGANIZACJĘ */}
+			{showLeaveModal && (
+				<div className='modal-overlay' onClick={() => setShowLeaveModal(false)}>
+					<div className='modal-card' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+						<h2>🚪 Opuść organizację</h2>
+						<p style={{ color: '#666', fontSize: '14px', marginBottom: '20px', lineHeight: '1.6' }}>
+							Czy na pewno chcesz opuścić organizację <strong>{selectedOrgForAction?.orgData?.name || selectedOrgForAction?.name}</strong>?
+							{userProfile?.organizations?.length > 1 ? (
+								<>
+									<br/><br/>
+									Zostaniesz przełączony na inną dostępną organizację.
+								</>
+							) : (
+								<>
+									<br/><br/>
+									⚠️ <strong>Nie masz innych organizacji.</strong> Po opuszczeniu tej organizacji stracisz dostęp do aplikacji.
+								</>
+							)}
+						</p>
+
+						<form onSubmit={handleLeaveOrganization}>
+							<div className="form-group">
+								<label>Potwierdź hasło</label>
+								<div className="password-input-wrapper">
+									<input
+										type={showConfirmPassword ? "text" : "password"}
+										placeholder="Wpisz swoje hasło"
+										value={confirmPassword}
+										onChange={(e) => setConfirmPassword(e.target.value)}
+										className="settings-input"
+										disabled={actionLoading}
+										required
+										autoFocus
+									/>
+									<button
+										type="button"
+										className="password-toggle"
+										onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+										tabIndex={-1}>
+										{showConfirmPassword ? '🙈' : '👁️'}
+									</button>
+								</div>
+							</div>
+
+							{actionError && (
+								<div style={{ 
+									padding: '12px', 
+									background: '#fee', 
+									color: '#c00', 
+									borderRadius: '8px', 
+									fontSize: '14px',
+									marginBottom: '16px'
+								}}>
+									{actionError}
+								</div>
+							)}
+
+							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+								<button 
+									type='submit' 
+									className='btn-danger'
+									disabled={actionLoading}
+									style={{ flex: 1 }}>
+									{actionLoading ? '⏳ Opuszczam...' : '🚪 Opuść organizację'}
+								</button>
+								<button 
+									type='button' 
+									className='modal-btn-secondary'
+									onClick={() => {
+										setShowLeaveModal(false)
+										setConfirmPassword('')
+										setActionError('')
+										setSelectedOrgForAction(null)
+									}}
+									style={{ flex: 1 }}>
+									Anuluj
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
+
+			{/* MODAL - USUŃ ORGANIZACJĘ */}
+			{showDeleteModal && (
+				<div className='modal-overlay' onClick={() => setShowDeleteModal(false)}>
+					<div className='modal-card' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+						<h2>🗑️ Usuń organizację</h2>
+						<div style={{ 
+							padding: '16px', 
+							background: '#fff3cd', 
+							border: '2px solid #ffc107',
+							borderRadius: '8px',
+							marginBottom: '20px'
+						}}>
+							<p style={{ margin: '0 0 12px 0', color: '#856404', fontWeight: '600', fontSize: '16px' }}>
+								⚠️ UWAGA! To działanie jest NIEODWRACALNE!
+							</p>
+							<p style={{ margin: 0, color: '#856404', fontSize: '14px', lineHeight: '1.6' }}>
+								Zostaną usunięte:<br/>
+								• Wszystkie zamówienia<br/>
+								• Wszystkie typy produktów<br/>
+								• Wszyscy członkowie zespołu<br/>
+								• Wszystkie dane organizacji
+							</p>
+						</div>
+						<p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+							Czy na pewno chcesz usunąć organizację <strong>{selectedOrgForAction?.orgData?.name || selectedOrgForAction?.name}</strong>?
+						</p>
+
+						<form onSubmit={handleDeleteOrganization}>
+							<div className="form-group">
+								<label>Potwierdź hasło</label>
+								<div className="password-input-wrapper">
+									<input
+										type={showConfirmPassword ? "text" : "password"}
+										placeholder="Wpisz swoje hasło"
+										value={confirmPassword}
+										onChange={(e) => setConfirmPassword(e.target.value)}
+										className="settings-input"
+										disabled={actionLoading}
+										required
+										autoFocus
+									/>
+									<button
+										type="button"
+										className="password-toggle"
+										onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+										tabIndex={-1}>
+										{showConfirmPassword ? '🙈' : '👁️'}
+									</button>
+								</div>
+							</div>
+
+							{actionError && (
+								<div style={{ 
+									padding: '12px', 
+									background: '#fee', 
+									color: '#c00', 
+									borderRadius: '8px', 
+									fontSize: '14px',
+									marginBottom: '16px'
+								}}>
+									{actionError}
+								</div>
+							)}
+
+							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+								<button 
+									type='submit' 
+									className='btn-danger'
+									disabled={actionLoading}
+									style={{ flex: 1 }}>
+									{actionLoading ? '⏳ Usuwam...' : '🗑️ Usuń organizację'}
+								</button>
+								<button 
+									type='button' 
+									className='modal-btn-secondary'
+									onClick={() => {
+										setShowDeleteModal(false)
+										setConfirmPassword('')
+										setActionError('')
+										setSelectedOrgForAction(null)
+									}}
+									style={{ flex: 1 }}>
+									Anuluj
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

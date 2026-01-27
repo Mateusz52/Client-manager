@@ -5,45 +5,53 @@ export default function FilterBar({ onFilterChange, filteredOrders, allOrders, p
 	const [searchTerm, setSearchTerm] = useState('')
 	const [dateFrom, setDateFrom] = useState('')
 	const [dateTo, setDateTo] = useState('')
+	const [dateType, setDateType] = useState('dateEnd') // ✅ NOWE - domyślnie data wysyłki
 	const [status, setStatus] = useState('all')
 	const [transactionType, setTransactionType] = useState('all')
 
 	const handleSearchChange = e => {
 		const value = e.target.value
 		setSearchTerm(value)
-		onFilterChange({ searchTerm: value, dateFrom, dateTo, status, transactionType })
+		onFilterChange({ searchTerm: value, dateFrom, dateTo, dateType, status, transactionType })
 	}
 
 	const handleDateFromChange = e => {
 		const value = e.target.value
 		setDateFrom(value)
-		onFilterChange({ searchTerm, dateFrom: value, dateTo, status, transactionType })
+		onFilterChange({ searchTerm, dateFrom: value, dateTo, dateType, status, transactionType })
 	}
 
 	const handleDateToChange = e => {
 		const value = e.target.value
 		setDateTo(value)
-		onFilterChange({ searchTerm, dateFrom, dateTo: value, status, transactionType })
+		onFilterChange({ searchTerm, dateFrom, dateTo: value, dateType, status, transactionType })
+	}
+
+	// ✅ NOWA FUNKCJA - wybór typu daty
+	const handleDateTypeChange = (type) => {
+		setDateType(type)
+		onFilterChange({ searchTerm, dateFrom, dateTo, dateType: type, status, transactionType })
 	}
 
 	const handleStatusChange = e => {
 		const value = e.target.value
 		setStatus(value)
-		onFilterChange({ searchTerm, dateFrom, dateTo, status: value, transactionType })
+		onFilterChange({ searchTerm, dateFrom, dateTo, dateType, status: value, transactionType })
 	}
 
 	const handleTransactionTypeChange = type => {
 		setTransactionType(type)
-		onFilterChange({ searchTerm, dateFrom, dateTo, status, transactionType: type })
+		onFilterChange({ searchTerm, dateFrom, dateTo, dateType, status, transactionType: type })
 	}
 
 	const handleClearFilters = () => {
 		setSearchTerm('')
 		setDateFrom('')
 		setDateTo('')
+		setDateType('dateEnd') // ✅ Reset do domyślnej (wysyłka)
 		setStatus('all')
 		setTransactionType('all')
-		onFilterChange({ searchTerm: '', dateFrom: '', dateTo: '', status: 'all', transactionType: 'all' })
+		onFilterChange({ searchTerm: '', dateFrom: '', dateTo: '', dateType: 'dateEnd', status: 'all', transactionType: 'all' })
 	}
 
 	const handleExportPDF = () => {
@@ -119,6 +127,37 @@ export default function FilterBar({ onFilterChange, filteredOrders, allOrders, p
 							<option value='oplacone'>Opłacone</option>
 							<option value='anulowane'>Anulowane</option>
 						</select>
+					</div>
+
+					{/* ✅ NOWA SEKCJA - Wybór typu daty */}
+					<div className='filter-item filter-date-type' style={{ gridColumn: '1 / -1' }}>
+						<label style={{ marginBottom: '8px', display: 'block', fontWeight: '600' }}>
+							Filtruj według daty:
+						</label>
+						<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+							<label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'normal' }}>
+								<input
+									type='radio'
+									name='dateType'
+									value='dateStart'
+									checked={dateType === 'dateStart'}
+									onChange={() => handleDateTypeChange('dateStart')}
+									style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+								/>
+								<span>📅 Data zamówienia</span>
+							</label>
+							<label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'normal' }}>
+								<input
+									type='radio'
+									name='dateType'
+									value='dateEnd'
+									checked={dateType === 'dateEnd'}
+									onChange={() => handleDateTypeChange('dateEnd')}
+									style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+								/>
+								<span>🚚 Data wysyłki</span>
+							</label>
+						</div>
 					</div>
 
 					<div className='filter-item'>

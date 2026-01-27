@@ -5,10 +5,11 @@ import LandingPage from './LandingPage'
 import Login from './Login'
 import Register from './Register'
 import Dashboard from './Dashboard'
-import Settings from './Settings'
 import SelectPlanPage from './SelectPlanPage'
 import PricingPage from './PricingPage'
 import CheckoutPage from './CheckoutPage'
+import CreateFirstOrganization from './CreateFirstOrganization'
+import Settings from './Settings'  // ✅ DODANE
 import { useState, useEffect } from 'react'
 import { db } from './firebase'
 import { doc, getDoc } from 'firebase/firestore'
@@ -29,6 +30,13 @@ function ProtectedDashboard() {
 				return
 			}
 			console.log('✅ USER OK')
+
+			// ✅ NOWA LOGIKA - Sprawdź czy user nie ma org ale ma plan
+			if (userProfile?.hasNoOrganizations && userProfile?.canCreateOrganization) {
+				console.log('⚠️ User nie ma organizacji ale ma płatny plan')
+				setCanAccess('needs-organization')
+				return
+			}
 
 			if (!hasOrganization) {
 				console.log('❌ BRAK ORGANIZACJI')
@@ -86,6 +94,11 @@ function ProtectedDashboard() {
 		return <Navigate to="/login" replace />
 	}
 
+	// ✅ NOWE - User nie ma org ale ma plan
+	if (canAccess === 'needs-organization') {
+		return <Navigate to="/create-first-organization" replace />
+	}
+
 	if (canAccess === 'no-org') {
 		return <Navigate to="/select-plan" replace />
 	}
@@ -94,34 +107,31 @@ function ProtectedDashboard() {
 		return (
 			<div style={{ 
 				display: 'flex', 
-				flexDirection: 'column',
+				justifyContent: 'center', 
 				alignItems: 'center', 
-				justifyContent: 'center',
 				minHeight: '100vh',
 				padding: '20px',
-				textAlign: 'center',
-				background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-				color: 'white'
+				background: '#f5f5f5'
 			}}>
 				<div style={{
 					background: 'white',
-					color: '#333',
-					padding: '40px',
 					borderRadius: '20px',
+					padding: '40px',
 					maxWidth: '500px',
-					boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+					textAlign: 'center',
+					boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
 				}}>
-					<div style={{ fontSize: '64px', marginBottom: '20px' }}>🎯</div>
-					<h2 style={{ fontSize: '28px', marginBottom: '16px', fontWeight: '700' }}>
-						Wybierz plan aby kontynuować
+					<div style={{ fontSize: '64px', marginBottom: '20px' }}>💳</div>
+					<h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#243c4c' }}>
+						Opłać plan aby kontynuować
 					</h2>
-					<p style={{ fontSize: '16px', color: '#666', marginBottom: '32px' }}>
-						Aby korzystać z aplikacji, musisz wybrać plan subskrypcji
+					<p style={{ color: '#666', marginBottom: '24px' }}>
+						Aby korzystać z aplikacji, musisz wybrać i opłacić plan dopasowany do Twojej firmy.
 					</p>
 					<button 
 						onClick={() => window.location.href = '/pricing'}
 						style={{
-							padding: '16px 32px',
+							padding: '14px 32px',
 							background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
 							color: 'white',
 							border: 'none',
@@ -129,8 +139,7 @@ function ProtectedDashboard() {
 							fontSize: '16px',
 							fontWeight: '700',
 							cursor: 'pointer',
-							boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-							marginBottom: '16px',
+							marginBottom: '12px',
 							width: '100%'
 						}}>
 						💳 Wybierz plan
@@ -227,12 +236,6 @@ function App() {
 				<Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
 				<Route path="/register" element={!currentUser ? <Register /> : <Navigate to="/" />} />
 				
-				{/* Settings - NOWA ROUTE! */}
-				<Route 
-					path="/settings" 
-					element={currentUser ? <Settings /> : <Navigate to="/login" />} 
-				/>
-				
 				{/* Plan selection flow */}
 				<Route 
 					path="/select-plan" 
@@ -245,6 +248,18 @@ function App() {
 				<Route 
 					path="/checkout" 
 					element={currentUser ? <CheckoutPage /> : <Navigate to="/register" />} 
+				/>
+				
+				{/* ✅ NOWE - Strona tworzenia pierwszej organizacji */}
+				<Route 
+					path="/create-first-organization" 
+					element={currentUser ? <CreateFirstOrganization /> : <Navigate to="/register" />} 
+				/>
+				
+				{/* ✅ NOWE - Ustawienia */}
+				<Route 
+					path="/settings" 
+					element={currentUser && hasOrganization ? <Settings /> : <Navigate to="/login" />} 
 				/>
 				
 				{/* 404 */}

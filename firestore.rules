@@ -2,18 +2,103 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 1, 18);
+    
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // ========================================
+    // USERS COLLECTION
+    // ========================================
+    match /users/{userId} {
+      // CREATE: Każdy authenticated user może utworzyć SWÓJ profil
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      
+      // READ: Authenticated users mogą czytać (dla TeamManagement)
+      // UWAGA: To pozwala czytać profile innych członków zespołu
+      allow read: if isSignedIn();
+      
+      // UPDATE: Tylko własny profil
+      allow update: if isOwner(userId);
+      
+      // DELETE: Tylko własny profil
+      allow delete: if isOwner(userId);
+    }
+    
+    // ========================================
+    // ORGANIZATIONS COLLECTION
+    // ========================================
+    match /organizations/{orgId} {
+      // CREATE: Tylko podczas rejestracji nowego ownera
+      allow create: if isSignedIn() && 
+                       request.resource.data.ownerId == request.auth.uid;
+      
+      // READ: Authenticated users
+      allow read: if isSignedIn();
+      
+      // UPDATE: Authenticated users (uprawnienia sprawdzamy w kodzie)
+      allow update: if isSignedIn();
+      
+      // DELETE: Authenticated users
+      allow delete: if isSignedIn();
+      
+      // ========================================
+      // ORDERS SUBCOLLECTION
+      // ========================================
+      match /orders/{orderId} {
+        // Wszyscy authenticated (sprawdzamy uprawnienia w kodzie)
+        allow read, create, update, delete: if isSignedIn();
+      }
+      
+      // ========================================
+      // PRODUCT TYPES SUBCOLLECTION
+      // ========================================
+      match /productTypes/{typeId} {
+        // Wszyscy authenticated (sprawdzamy uprawnienia w kodzie)
+        allow read, create, update, delete: if isSignedIn();
+      }
+    }
+    
+    // ========================================
+    // INVITE CODES COLLECTION
+    // ========================================
+    match /inviteCodes/{code} {
+      // CREATE: Authenticated users
+      allow create: if isSignedIn();
+      
+      // READ: KAŻDY (nawet niezalogowani!)
+      // WAŻNE: Potrzebne do rejestracji z kodem
+      // Bezpieczne bo kod jest 6-znakowy losowy (trudny do zgadnięcia)
+      allow read: if true;
+      
+      // UPDATE: Authenticated users (do oznaczania jako "used")
+      allow update: if isSignedIn();
+      
+      // DELETE: Authenticated users
+      allow delete: if isSignedIn();
+    }
+    
+    // ========================================
+    // STRIPE CHECKOUT SESSIONS
+    // ========================================
+    match /customers/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /checkout_sessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      match /subscriptions/{subscriptionId} {
+        allow read: if isOwner(userId);
+      }
     }
   }
 }

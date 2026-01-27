@@ -450,7 +450,7 @@ export default function LandingPage() {
 				<div className='container'>
 					<div className='footer-grid'>
 						<div className='footer-column'>
-							<h4>CLIENT MANAGER</h4>
+							<h4>ORDER MANAGER</h4>
 							<p>System zarządzania produkcją palet i produktów drewnianych.</p>
 						</div>
 
@@ -483,13 +483,13 @@ export default function LandingPage() {
 
 						<div className='footer-column'>
 							<h4>Kontakt</h4>
-							<a href='mailto:kontakt@clientmanager.pl'>kontakt@clientmanager.pl</a>
+							<a href='mailto:kontakt@clientmanager.pl'>kontakt@ordermanager.pl</a>
 							<a href='tel:+48123456789'>+48 123 456 789</a>
 						</div>
 					</div>
 
 					<div className='footer-bottom'>
-						<p>&copy; 2026 CLIENT MANAGER. Wszystkie prawa zastrzeżone.</p>
+						<p>&copy; 2026 CODEMATE. Wszystkie prawa zastrzeżone.</p>
 					</div>
 				</div>
 			</footer>

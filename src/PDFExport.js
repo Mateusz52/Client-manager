@@ -45,6 +45,11 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 		}
 		if (filters.dateFrom) filterInfo.push(`Od: ${filters.dateFrom}`)
 		if (filters.dateTo) filterInfo.push(`Do: ${filters.dateTo}`)
+		// ✅ DODANE - info o typie daty
+		if (filters.dateType) {
+			const dateTypeMap = { 'dateStart': 'zamowienia', 'dateEnd': 'wysylki' }
+			filterInfo.push(`Data: ${dateTypeMap[filters.dateType] || 'zamowienia'}`)
+		}
 		
 		if (filterInfo.length > 0) {
 			doc.text(filterInfo.join(' | '), 14, yPos)
@@ -53,6 +58,13 @@ export const exportOrdersToPDF = (orders, filters, productTypes) => {
 
 		// FILTRUJ - usuń anulowane
 		const activeOrders = orders.filter(order => order.status !== 'anulowane')
+		
+		// ✅ SORTUJ PO DACIE WYSYŁKI (dateEnd) - ZAWSZE!
+		activeOrders.sort((a, b) => {
+			const dateA = a.dateEnd ? new Date(a.dateEnd) : new Date('9999-12-31')
+			const dateB = b.dateEnd ? new Date(b.dateEnd) : new Date('9999-12-31')
+			return dateA - dateB // Chronologicznie: najstarsze → najnowsze
+		})
 		
 		doc.text(`Data: ${new Date().toLocaleDateString('pl-PL')} | Zamowien: ${activeOrders.length}`, 14, yPos)
 		yPos += 8

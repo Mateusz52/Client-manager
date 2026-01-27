@@ -28,7 +28,7 @@ export default function Register() {
 					await joinOrganizationWithCode(codeFromUrl)
 					setSearchParams({})
 					alert('✅ Pomyślnie dołączyłeś do nowej organizacji!')
-					window.location.href = '/dashboard'
+					window.location.href = '/'  // ✅ Dashboard
 				} catch (err) {
 					setError(err.message || 'Błąd dołączania do organizacji')
 					setLoading(false)
@@ -64,19 +64,25 @@ export default function Register() {
 			}
 
 			if (hasInviteCode) {
+				// ✅ REJESTRACJA Z KODEM
 				if (!inviteCode.trim()) {
 					throw new Error('Wpisz kod zaproszenia')
 				}
 				await signupWithInviteCode(email, password, displayName, inviteCode.toUpperCase())
+				
+				console.log('✅ Rejestracja z kodem pomyślna - przekierowuję na dashboard...')
+				setTimeout(() => {
+					window.location.href = '/'  // ✅ User z kodem → Dashboard (nie select-plan!)
+				}, 500)
 			} else {
+				// ✅ REJESTRACJA JAKO OWNER
 				await signupAsOwner(email, password, displayName)
+				
+				console.log('✅ Rejestracja jako owner pomyślna - przekierowuję na wybór planu...')
+				setTimeout(() => {
+					window.location.href = '/select-plan'  // ✅ Owner → Wybór planu
+				}, 500)
 			}
-
-			console.log('✅ Rejestracja pomyślna - przekierowuję...')
-			// Przekieruj na wybór planu
-			setTimeout(() => {
-				window.location.href = '/select-plan'
-			}, 500)
 
 		} catch (err) {
 			console.error('❌ Błąd rejestracji:', err)
