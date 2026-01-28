@@ -8,8 +8,7 @@ import Dashboard from './Dashboard'
 import SelectPlanPage from './SelectPlanPage'
 import PricingPage from './PricingPage'
 import CheckoutPage from './CheckoutPage'
-import CreateFirstOrganization from './CreateFirstOrganization'
-import Settings from './Settings'  // ✅ DODANE
+import Settings from './Settings'
 import { useState, useEffect } from 'react'
 import { db } from './firebase'
 import { doc, getDoc } from 'firebase/firestore'
@@ -22,50 +21,43 @@ function ProtectedDashboard() {
 
 	useEffect(() => {
 		const checkAccess = async () => {
-			console.log('🔵 START CHECK ACCESS')
+			console.log('ðŸ”µ START CHECK ACCESS')
 			
 			if (!currentUser) {
-				console.log('❌ BRAK USERA')
+				console.log('âŒ BRAK USERA')
 				setCanAccess('no-user')
 				return
 			}
-			console.log('✅ USER OK')
-
-			// ✅ NOWA LOGIKA - Sprawdź czy user nie ma org ale ma plan
-			if (userProfile?.hasNoOrganizations && userProfile?.canCreateOrganization) {
-				console.log('⚠️ User nie ma organizacji ale ma płatny plan')
-				setCanAccess('needs-organization')
-				return
-			}
+			console.log('âœ… USER OK')
 
 			if (!hasOrganization) {
-				console.log('❌ BRAK ORGANIZACJI')
+				console.log('âŒ BRAK ORGANIZACJI')
 				setCanAccess('no-org')
 				return
 			}
-			console.log('✅ ORGANIZACJA OK')
+			console.log('âœ… ORGANIZACJA OK')
 
 			const orgId = userProfile.currentOrganizationId
-			console.log('🔵 orgId:', orgId)
+			console.log('ðŸ”µ orgId:', orgId)
 			
 			if (orgId) {
 				const orgDoc = await getDoc(doc(db, 'organizations', orgId))
-				console.log('🔵 orgDoc.exists():', orgDoc.exists())
+				console.log('ðŸ”µ orgDoc.exists():', orgDoc.exists())
 				
 				if (orgDoc.exists()) {
 					const orgData = orgDoc.data()
-					console.log('🔵 orgData:', orgData)
+					console.log('ðŸ”µ orgData:', orgData)
 					
 					const plan = orgData.subscription?.plan || orgData.plan
-					console.log('🔵 PLAN:', plan)
+					console.log('ðŸ”µ PLAN:', plan)
 
 					if (!plan || plan === 'free') {
-						console.log('❌ PLAN FREE LUB BRAK')
+						console.log('âŒ PLAN FREE LUB BRAK')
 						setCanAccess('no-plan')
 						return
 					}
 
-					console.log('✅ PLAN OK - DOSTĘP!')
+					console.log('âœ… PLAN OK - DOSTÄ˜P!')
 					setCanAccess('ok')
 				}
 			}
@@ -83,8 +75,8 @@ function ProtectedDashboard() {
 				minHeight: '100vh' 
 			}}>
 				<div style={{ textAlign: 'center' }}>
-					<div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-					<p style={{ fontSize: '18px', color: '#666' }}>Sprawdzam dostęp...</p>
+					<div style={{ fontSize: '48px', marginBottom: '16px' }}>â³</div>
+					<p style={{ fontSize: '18px', color: '#666' }}>Sprawdzam dostÄ™p...</p>
 				</div>
 			</div>
 		)
@@ -92,11 +84,6 @@ function ProtectedDashboard() {
 
 	if (canAccess === 'no-user') {
 		return <Navigate to="/login" replace />
-	}
-
-	// ✅ NOWE - User nie ma org ale ma plan
-	if (canAccess === 'needs-organization') {
-		return <Navigate to="/create-first-organization" replace />
 	}
 
 	if (canAccess === 'no-org') {
@@ -121,12 +108,12 @@ function ProtectedDashboard() {
 					textAlign: 'center',
 					boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
 				}}>
-					<div style={{ fontSize: '64px', marginBottom: '20px' }}>💳</div>
+					<div style={{ fontSize: '64px', marginBottom: '20px' }}>ðŸ’³</div>
 					<h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#243c4c' }}>
-						Opłać plan aby kontynuować
+						OpÅ‚aÄ‡ plan aby kontynuowaÄ‡
 					</h2>
 					<p style={{ color: '#666', marginBottom: '24px' }}>
-						Aby korzystać z aplikacji, musisz wybrać i opłacić plan dopasowany do Twojej firmy.
+						Aby korzystaÄ‡ z aplikacji, musisz wybraÄ‡ i opÅ‚aciÄ‡ plan dopasowany do Twojej firmy.
 					</p>
 					<button 
 						onClick={() => window.location.href = '/pricing'}
@@ -142,7 +129,7 @@ function ProtectedDashboard() {
 							marginBottom: '12px',
 							width: '100%'
 						}}>
-						💳 Wybierz plan
+						ðŸ’³ Wybierz plan
 					</button>
 					<button 
 						onClick={() => window.location.href = '/landing'}
@@ -155,7 +142,7 @@ function ProtectedDashboard() {
 							fontWeight: '600',
 							cursor: 'pointer'
 						}}>
-						← Powrót na stronę główną
+						â† PowrÃ³t na stronÄ™ gÅ‚Ã³wnÄ…
 					</button>
 				</div>
 			</div>
@@ -199,7 +186,7 @@ function App() {
 						margin: '0 auto 20px',
 						animation: 'spin 1s linear infinite'
 					}}></div>
-					Ładowanie...
+					Åadowanie...
 					<style>{`
 						@keyframes spin {
 							0% { transform: rotate(0deg); }
@@ -250,13 +237,7 @@ function App() {
 					element={currentUser ? <CheckoutPage /> : <Navigate to="/register" />} 
 				/>
 				
-				{/* ✅ NOWE - Strona tworzenia pierwszej organizacji */}
-				<Route 
-					path="/create-first-organization" 
-					element={currentUser ? <CreateFirstOrganization /> : <Navigate to="/register" />} 
-				/>
-				
-				{/* ✅ NOWE - Ustawienia */}
+				{/* ✅ NOWE - Settings */}
 				<Route 
 					path="/settings" 
 					element={currentUser && hasOrganization ? <Settings /> : <Navigate to="/login" />} 
