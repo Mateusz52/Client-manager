@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import OrganizationSwitcher from './OrganizationSwitcher'
 import { db } from './firebase'
-import { collection, addDoc, getDoc, doc } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore'
 import woodIcon from './assets/wood.png'
 import './Navbar.css'
 
@@ -56,84 +56,6 @@ export default function Navbar() {
 		}
 	}
 
-	// ✅ ZMODYFIKOWANA FUNKCJA - sprawdzanie czy można dodać organizację
-	const canAddOrganizations = async () => {
-		if (!userProfile?.organizations || !currentUser) {
-			return { canAdd: false, reason: 'Brak organizacji' }
-		}
-		
-		// Znajdź organizacje gdzie user jest FOUNDER (ownerId)
-		const foundedOrgs = []
-		
-		for (const org of userProfile.organizations) {
-			try {
-				const orgDoc = await getDoc(doc(db, 'organizations', org.id))
-				if (orgDoc.exists()) {
-					const orgData = orgDoc.data()
-					
-					// Sprawdź czy user jest FOUNDER (utworzył organizację)
-					if (orgData.ownerId === currentUser.uid) {
-						foundedOrgs.push({ ...org, orgData })
-					}
-				}
-			} catch (error) {
-				console.error('Błąd sprawdzania organizacji:', error)
-			}
-		}
-		
-		if (foundedOrgs.length === 0) {
-			return { 
-				canAdd: false, 
-				reason: '💼 Aby utworzyć własną organizację, musisz wykupić plan.\n\n✨ Dostępne plany już od 59 zł/miesiąc!' 
-			}
-		}
-
-		// Sprawdź czy któraś z ZAŁOŻONYCH organizacji ma płatny plan
-		for (const org of foundedOrgs) {
-			const orgData = org.orgData
-			const plan = orgData.subscription?.plan || orgData.plan || 'free'
-			
-			// Jeśli ma płatny plan (monthly, yearly, etc.) - może dodać organizację
-			if (plan !== 'free') {
-				// Sprawdź limit organizacji
-				const maxOrgs = orgData.limits?.maxOrganizations || 1
-				if (foundedOrgs.length >= maxOrgs) {
-					return {
-						canAdd: false,
-						reason: `⚠️ Osiągnąłeś limit organizacji (${maxOrgs}).\n\nZmień plan na Półroczny lub Roczny aby utworzyć więcej firm.`
-					}
-				}
-				
-				return { canAdd: true, orgData }
-			}
-		}
-
-		// Żadna ZAŁOŻONA organizacja nie ma płatnego planu
-		return { 
-			canAdd: false, 
-			reason: '💼 Aby utworzyć nową organizację, musisz mieć aktywny plan.\n\n✨ Dostępne plany już od 59 zł/miesiąc!' 
-		}
-	}
-
-	// ✅ ZMODYFIKOWANA FUNKCJA - z przekierowaniem na /pricing
-	const handleCreateNewOrgClick = async () => {
-		const checkResult = await canAddOrganizations()
-		
-		if (!checkResult.canAdd) {
-			// ✅ Pytaj użytkownika czy chce przejść do wyboru planu
-			const userWantsToBuy = window.confirm(
-				checkResult.reason + '\n\n🛒 Przejść do wyboru planu?'
-			)
-			
-			if (userWantsToBuy) {
-				window.location.href = '/pricing'
-			}
-			return
-		}
-		
-		setShowNewOrgModal(true)
-	}
-
 	const handleCreateNewOrg = async (e) => {
 		e.preventDefault()
 		if (!newOrgName.trim()) {
@@ -144,48 +66,32 @@ export default function Navbar() {
 		setNewOrgLoading(true)
 
 		try {
-			// DODATKOWE SPRAWDZENIE przed utworzeniem
-			const checkResult = await canAddOrganizations()
-			
-			if (!checkResult.canAdd) {
-				alert(checkResult.reason)
+			// Limit zawsze 15
+			const maxOrgs = 15
+			const userOwnedOrgs = userProfile?.organizations?.filter(org => org.role === 'Właściciel') || []
+
+			if (userOwnedOrgs.length >= maxOrgs) {
+				alert(`❌ Osiągnąłeś limit organizacji (${maxOrgs}).`)
 				setNewOrgLoading(false)
 				return
 			}
 
-			const orgData = checkResult.orgData
-			const userOwnedOrgs = userProfile?.organizations?.filter(org => org.role === 'Właściciel') || []
-
-			// Utwórz nową organizację z tym samym planem co obecna
+			// Utwórz organizację
 			const newOrgRef = await addDoc(collection(db, 'organizations'), {
 				name: newOrgName,
 				ownerId: currentUser.uid,
 				ownerEmail: currentUser.email,
-				subscription: {
-					plan: orgData.subscription.plan,
-					status: 'active',
-					trialEndsAt: null,
-					currentPeriodStart: new Date().toISOString(),
-					currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-					cancelAtPeriodEnd: false,
-					price: orgData.subscription.price,
-					interval: orgData.subscription.interval,
-					stripeCustomerId: `cus_mock_${Date.now()}`,
-					stripeSubscriptionId: `sub_mock_${Date.now()}`
-				},
-				limits: {
-					maxOrganizations: orgData.limits?.maxOrganizations || 1
-				},
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString()
 			})
 
-			const { updateDoc } = await import('firebase/firestore')
+			// Dodaj organizację do profilu użytkownika
 			const userRef = doc(db, 'users', currentUser.uid)
+			const existingOrgs = userProfile?.organizations || []
 			
 			await updateDoc(userRef, {
 				organizations: [
-					...userProfile.organizations,
+					...existingOrgs,
 					{
 						id: newOrgRef.id,
 						name: newOrgName,
@@ -200,7 +106,7 @@ export default function Navbar() {
 							canManageTeam: true,
 							canChangePlan: true,
 						},
-						isDefault: false,
+						isDefault: existingOrgs.length === 0,
 						joinedAt: new Date().toISOString()
 					}
 				],
@@ -221,9 +127,15 @@ export default function Navbar() {
 	}
 
 	const hasOrganization = userProfile?.organizations?.length > 0
+	const hasSubscription = userProfile?.subscription != null
+	
+	const canAddOrganizations = () => {
+		return userProfile?.subscription && userProfile?.limits
+	}
 
 	const isInDashboard = location.pathname === '/' && currentUser && hasOrganization
 	const isOnLanding = location.pathname === '/landing'
+	const isLoggedIn = currentUser != null
 
 	return (
 		<>
@@ -231,7 +143,7 @@ export default function Navbar() {
 				<div className="navbar-container">
 					<Link to="/landing" className="navbar-logo">
 						<img src={woodIcon} alt="CLIENT MANAGER" />
-						<span>ORDER MANAGER</span>
+						<span>CLIENT MANAGER</span>
 					</Link>
 
 					{/* DESKTOP LINKS */}
@@ -279,14 +191,13 @@ export default function Navbar() {
 
 					{/* DESKTOP AUTH */}
 					<div className="navbar-auth navbar-auth-desktop">
-						{currentUser && hasOrganization ? (
+						{isLoggedIn ? (
 							<>
-								<OrganizationSwitcher />
+								{hasOrganization && <OrganizationSwitcher />}
 								
-								{/* ✅ ZMIENIONE - przycisk widoczny dla WSZYSTKICH */}
-								{hasOrganization && (
+								{canAddOrganizations() && (
 									<button 
-										onClick={handleCreateNewOrgClick}
+										onClick={() => setShowNewOrgModal(true)}
 										className="navbar-btn navbar-btn-new-org"
 										title="Dodaj nową firmę">
 										🏢
@@ -304,7 +215,7 @@ export default function Navbar() {
 									⚙️
 								</Link>
 
-								{!isInDashboard && (
+								{!isInDashboard && hasOrganization && (
 									<Link to="/" className="navbar-btn navbar-btn-app-main">
 										📊 Panel zarządzania
 									</Link>
@@ -339,7 +250,6 @@ export default function Navbar() {
 				{/* MOBILE MENU */}
 				{mobileMenuOpen && (
 					<div className="navbar-mobile-menu">
-						{/* MOBILE LINKS */}
 						{isOnLanding && (
 							<div className="mobile-menu-section">
 								<a 
@@ -380,19 +290,19 @@ export default function Navbar() {
 							</div>
 						)}
 
-						{/* MOBILE AUTH */}
-						{currentUser && hasOrganization ? (
+						{isLoggedIn ? (
 							<div className="mobile-menu-section">
-								<div className="mobile-org-info">
-									<OrganizationSwitcher />
-								</div>
-								
-								{/* ✅ ZMIENIONE - przycisk widoczny dla WSZYSTKICH */}
 								{hasOrganization && (
+									<div className="mobile-org-info">
+										<OrganizationSwitcher />
+									</div>
+								)}
+								
+								{canAddOrganizations() && (
 									<button 
 										onClick={() => {
+											setShowNewOrgModal(true)
 											setMobileMenuOpen(false)
-											handleCreateNewOrgClick()
 										}}
 										className="mobile-menu-btn">
 										🏢 Nowa firma
@@ -415,7 +325,7 @@ export default function Navbar() {
 									⚙️ Ustawienia
 								</Link>
 
-								{!isInDashboard && (
+								{!isInDashboard && hasOrganization && (
 									<Link 
 										to="/" 
 										onClick={() => setMobileMenuOpen(false)}
@@ -522,6 +432,9 @@ export default function Navbar() {
 						<h2>🏢 Utwórz nową firmę</h2>
 						<p style={{ color: '#6c757d', fontSize: '14px', marginBottom: '20px' }}>
 							Dodaj kolejną organizację do swojego konta
+							<span style={{ display: 'block', marginTop: '8px', color: '#667eea' }}>
+								Limit: 15 organizacji
+							</span>
 						</p>
 
 						<form onSubmit={handleCreateNewOrg}>

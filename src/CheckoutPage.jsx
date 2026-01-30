@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { db } from './firebase'
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore'
+import { collection, addDoc, doc, setDoc, getDoc } from 'firebase/firestore'
 import './CheckoutPage.css'
 
 export default function CheckoutPage() {
@@ -29,37 +29,45 @@ export default function CheckoutPage() {
 		try {
 			await new Promise(resolve => setTimeout(resolve, 2000))
 
+			// 1. Pobierz aktualne dane użytkownika
+			const userRef = doc(db, 'users', currentUser.uid)
+			const userDoc = await getDoc(userRef)
+			const userData = userDoc.data() || {}
+			const existingOrgs = userData?.organizations || []
+
+			// 2. SUBSKRYPCJA zapisywana do UŻYTKOWNIKA (nie organizacji!)
+			const subscriptionData = {
+				plan: pendingOrg.plan.id,
+				status: 'trialing',
+				trialEndsAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+				currentPeriodStart: new Date().toISOString(),
+				currentPeriodEnd: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+				cancelAtPeriodEnd: false,
+				price: pendingOrg.plan.price,
+				interval: pendingOrg.plan.id === 'monthly' ? 'month' : pendingOrg.plan.id === 'semiannual' ? 'half_year' : 'year',
+				stripeCustomerId: `cus_mock_${Date.now()}`,
+				stripeSubscriptionId: `sub_mock_${Date.now()}`
+			}
+
+			const limitsData = {
+				maxOrganizations: 15,  // Zawsze 15 dla wszystkich planów
+			}
+
+			// 3. Utwórz organizację BEZ subskrypcji
 			const orgRef = await addDoc(collection(db, 'organizations'), {
 				name: pendingOrg.companyName,
 				ownerId: currentUser.uid,
 				ownerEmail: currentUser.email,
-				subscription: {
-					plan: pendingOrg.plan.id,
-					status: 'trialing',
-					trialEndsAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-					currentPeriodStart: new Date().toISOString(),
-					currentPeriodEnd: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-					cancelAtPeriodEnd: false,
-					price: pendingOrg.plan.price,
-					interval: pendingOrg.plan.id === 'monthly' ? 'month' : pendingOrg.plan.id === 'semiannual' ? 'half_year' : 'year',
-					stripeCustomerId: `cus_mock_${Date.now()}`,
-					stripeSubscriptionId: `sub_mock_${Date.now()}`
-				},
-				limits: {
-					maxOrganizations: pendingOrg.plan.id === 'monthly' ? 1 : 999,
-				},
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString()
+				// BEZ subscription i limits - te są w profilu użytkownika!
 			})
 
-			const userRef = doc(db, 'users', currentUser.uid)
-			const userDoc = await import('firebase/firestore').then(m => m.getDoc(userRef))
-			
-			const userData = userDoc.data()
-			const existingOrgs = userData?.organizations || []
-
+			// 4. Zapisz subskrypcję do profilu użytkownika + dodaj organizację
 			await setDoc(userRef, {
 				...userData,
+				subscription: subscriptionData,
+				limits: limitsData,
 				organizations: [
 					...existingOrgs,
 					{
@@ -107,7 +115,6 @@ export default function CheckoutPage() {
 		<div className="checkout-page">
 			<div className="checkout-container">
 				{success ? (
-					/* EKRAN SUKCESU */
 					<div className="checkout-success">
 						<div className="success-icon">✅</div>
 						<h2>Organizacja utworzona!</h2>
@@ -115,15 +122,15 @@ export default function CheckoutPage() {
 						
 						<div className="success-details">
 							<div className="success-item">
-								<span className="success-label">Firma: </span>
+								<span className="success-label">Firma:</span>
 								<span className="success-value">{pendingOrg.companyName}</span>
 							</div>
 							<div className="success-item">
-								<span className="success-label">Plan: </span>
+								<span className="success-label">Plan:</span>
 								<span className="success-value">{pendingOrg.plan.name}</span>
 							</div>
 							<div className="success-item">
-								<span className="success-label">Okres próbny: </span>
+								<span className="success-label">Okres próbny:</span>
 								<span className="success-value">3 miesiące gratis 🎁</span>
 							</div>
 						</div>
@@ -140,14 +147,12 @@ export default function CheckoutPage() {
 						</div>
 					</div>
 				) : loading ? (
-					/* EKRAN ŁADOWANIA */
 					<div className="checkout-processing">
 						<div className="processing-spinner"></div>
 						<h2>Przetwarzanie płatności...</h2>
 						<p>Proszę czekać, to zajmie chwilę</p>
 					</div>
 				) : (
-					/* EKRAN CHECKOUT */
 					<>
 						<div className="checkout-header">
 							<h1>💳 Podsumowanie zamówienia</h1>
@@ -157,24 +162,24 @@ export default function CheckoutPage() {
 						<div className="checkout-summary">
 							<h3>📋 Szczegóły organizacji</h3>
 							<div className="summary-item">
-								<span className="summary-label">Nazwa firmy: </span>
+								<span className="summary-label">Nazwa firmy:</span>
 								<span className="summary-value">{pendingOrg.companyName}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Plan: </span>
+								<span className="summary-label">Plan:</span>
 								<span className="summary-value">{pendingOrg.plan.name}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Cena: </span>
+								<span className="summary-label">Cena:</span>
 								<span className="summary-value">{pendingOrg.plan.price} zł/{pendingOrg.plan.period}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Okres próbny: </span>
+								<span className="summary-label">Okres próbny:</span>
 								<span className="summary-value trial-highlight">3 miesiące gratis 🎁</span>
 							</div>
 							<div className="summary-divider"></div>
 							<div className="summary-item summary-total">
-								<span className="summary-label">Do zapłaty dzisiaj: </span>
+								<span className="summary-label">Do zapłaty dzisiaj:</span>
 								<span className="summary-value">0 zł</span>
 							</div>
 							<div className="summary-note">

@@ -75,6 +75,12 @@
 	font-size: 28px;
 	font-weight: 700;
 	color: #243c4c;
+	margin: 0 0 12px 0;
+}
+
+.section-description {
+	font-size: 16px;
+	color: #6c757d;
 	margin: 0 0 32px 0;
 }
 
@@ -122,7 +128,8 @@
 .btn-save,
 .btn-primary,
 .btn-secondary,
-.btn-danger {
+.btn-danger,
+.btn-warning {
 	padding: 12px 24px;
 	border-radius: 8px;
 	font-weight: 700;
@@ -165,8 +172,27 @@
 	color: white;
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
 	background: #c82333;
+}
+
+.btn-danger:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.btn-warning {
+	background: #fd7e14;
+	color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+	background: #e96b02;
+}
+
+.btn-warning:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 /* DANGER ZONE */
@@ -188,7 +214,141 @@
 	margin: 0 0 20px 0;
 }
 
-/* SUBSCRIPTION */
+/* ============================================
+   ORGANIZATIONS TAB
+   ============================================ */
+
+.orgs-loading {
+	text-align: center;
+	padding: 40px;
+	color: #6c757d;
+	font-size: 16px;
+}
+
+.no-organizations {
+	text-align: center;
+	padding: 60px 20px;
+	background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+	border-radius: 16px;
+	border: 2px dashed #dee2e6;
+}
+
+.no-org-icon {
+	font-size: 64px;
+	margin-bottom: 20px;
+}
+
+.no-organizations h3 {
+	font-size: 24px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0 0 12px 0;
+}
+
+.no-organizations p {
+	font-size: 16px;
+	color: #6c757d;
+	margin: 0 0 24px 0;
+}
+
+.organizations-list {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.org-card {
+	background: #f8f9fa;
+	border: 2px solid #e8e8e8;
+	border-radius: 16px;
+	padding: 24px;
+	transition: all 0.2s;
+}
+
+.org-card:hover {
+	border-color: #dee2e6;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.org-card-owner {
+	background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+	border-color: #ffc107;
+}
+
+.org-card-owner:hover {
+	border-color: #e0a800;
+}
+
+.org-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 16px;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.org-card-info h3 {
+	font-size: 20px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0 0 8px 0;
+}
+
+.org-badge {
+	display: inline-block;
+	padding: 4px 12px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.badge-owner {
+	background: #ffc107;
+	color: #856404;
+}
+
+.badge-member {
+	background: #e9ecef;
+	color: #495057;
+}
+
+.org-card-role {
+	padding: 6px 14px;
+	background: white;
+	border: 2px solid #e8e8e8;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #667eea;
+}
+
+.org-card-actions {
+	padding-top: 16px;
+	border-top: 1px solid #dee2e6;
+}
+
+.org-card-warning {
+	font-size: 14px;
+	color: #856404;
+	background: #fff3cd;
+	padding: 12px 16px;
+	border-radius: 8px;
+	margin: 0 0 16px 0;
+	line-height: 1.5;
+}
+
+.org-card-info-text {
+	font-size: 14px;
+	color: #6c757d;
+	margin: 0 0 16px 0;
+	line-height: 1.5;
+}
+
+/* ============================================
+   SUBSCRIPTION TAB
+   ============================================ */
+
 .subscription-card {
 	background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 	border-radius: 12px;
@@ -296,15 +456,38 @@
 .no-subscription {
 	text-align: center;
 	padding: 60px 20px;
+	background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+	border-radius: 16px;
+	border: 2px dashed #dee2e6;
+}
+
+.no-subscription-icon {
+	font-size: 64px;
+	margin-bottom: 20px;
+	display: block;
+}
+
+.no-subscription h3 {
+	font-size: 24px;
+	font-weight: 700;
+	color: #243c4c;
+	margin: 0 0 16px 0;
 }
 
 .no-subscription p {
-	font-size: 18px;
+	font-size: 16px;
 	color: #6c757d;
-	margin: 0 0 24px 0;
+	margin: 0 0 28px 0;
+	line-height: 1.6;
+	max-width: 400px;
+	margin-left: auto;
+	margin-right: auto;
 }
 
-/* SECURITY */
+/* ============================================
+   SECURITY TAB
+   ============================================ */
+
 .security-item {
 	padding: 24px 0;
 	border-bottom: 1px solid #f0f0f0;
@@ -327,7 +510,10 @@
 	margin: 0 0 16px 0;
 }
 
-/* RESPONSIVE */
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
 @media (max-width: 768px) {
 	.settings-page {
 		padding: 100px 16px 40px 16px;
@@ -364,97 +550,12 @@
 	.subscription-actions button {
 		width: 100%;
 	}
-}
 
-/* ==========================================
-   CSS DLA ZMIANY HASŁA W SETTINGS
-   Dodaj na końcu /src/Settings.css
-   ========================================== */
-
-.password-change-section {
-	background: #f8f9fa;
-	border-radius: 12px;
-	padding: 24px;
-	margin-bottom: 24px;
-}
-
-.password-change-form {
-	margin-top: 20px;
-}
-
-.password-change-form .form-group {
-	margin-bottom: 20px;
-}
-
-.password-change-form label {
-	display: block;
-	margin-bottom: 8px;
-	font-weight: 600;
-	color: #333;
-	font-size: 14px;
-}
-
-.password-input-wrapper {
-	position: relative;
-	width: 100%;
-}
-
-.password-input-wrapper .settings-input {
-	padding-right: 50px;
-	width: 100%;
-}
-
-.password-toggle {
-	position: absolute;
-	right: 12px;
-	top: 50%;
-	transform: translateY(-50%);
-	background: none;
-	border: none;
-	font-size: 20px;
-	cursor: pointer;
-	padding: 4px 8px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: opacity 0.2s;
-	user-select: none;
-	-webkit-tap-highlight-color: transparent;
-}
-
-.password-toggle:hover {
-	opacity: 0.7;
-}
-
-.password-toggle:focus {
-	outline: none;
-}
-
-.password-toggle:active {
-	transform: translateY(-50%) scale(0.95);
-}
-
-.password-error {
-	animation: shake 0.3s;
-}
-
-.password-success {
-	animation: slideDown 0.3s;
-}
-
-@keyframes shake {
-	0%, 100% { transform: translateX(0); }
-	25% { transform: translateX(-10px); }
-	75% { transform: translateX(10px); }
-}
-
-@keyframes slideDown {
-	from {
-		opacity: 0;
-		transform: translateY(-10px);
+	.org-card-header {
+		flex-direction: column;
 	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
+
+	.org-card-role {
+		align-self: flex-start;
 	}
 }

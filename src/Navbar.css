@@ -355,12 +355,12 @@
 		display: none !important;
 	}
 
-	/* Pokaż burger */
+	/* PokaÅ¼ burger */
 	.navbar-burger {
 		display: flex;
 	}
 
-	/* Pokaż mobile menu */
+	/* PokaÅ¼ mobile menu */
 	.navbar-mobile-menu {
 		display: block;
 	}
@@ -388,5 +388,29 @@
 	.mobile-menu-btn {
 		padding: 12px 14px;
 		font-size: 14px;
+	}
+}
+/* PRZYCISK KUP PLAN - dla użytkowników bez organizacji */
+.navbar-btn-buy-plan {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	padding: 10px 20px;
+	font-size: 14px;
+	font-weight: 700;
+	box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+	animation: pulse-buy 2s infinite;
+}
+
+.navbar-btn-buy-plan:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 24px rgba(102, 126, 234, 0.5);
+}
+
+@keyframes pulse-buy {
+	0%, 100% {
+		box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+	}
+	50% {
+		box-shadow: 0 4px 24px rgba(102, 126, 234, 0.5);
 	}
 }

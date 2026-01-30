@@ -8,7 +8,7 @@ import {
 	sendPasswordResetEmail,
 	sendEmailVerification,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, updateDoc, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, updateDoc } from 'firebase/firestore'
 
 const AuthContext = createContext()
 
@@ -33,66 +33,25 @@ export function AuthProvider({ children }) {
 	const [permissions, setPermissions] = useState(null)
 	const [loading, setLoading] = useState(true)
 
-	// ✅ NOWA FUNKCJA - Sprawdź czy user ma płatny plan w którejkolwiek organizacji którą założył
-	const checkIfUserHasPaidPlan = async (userId) => {
-		try {
-			const orgsSnapshot = await getDocs(collection(db, 'organizations'))
-			
-			for (const orgDoc of orgsSnapshot.docs) {
-				const orgData = orgDoc.data()
-				
-				// Sprawdź czy user jest ownerem tej organizacji
-				if (orgData.ownerId === userId) {
-					const plan = orgData.subscription?.plan || orgData.plan || 'free'
-					
-					// Jeśli ma płatny plan - zwróć true
-					if (plan !== 'free') {
-						console.log(`✅ User ma płatny plan: ${plan} w org: ${orgDoc.id}`)
-						return { hasPaidPlan: true, plan, orgId: orgDoc.id }
-					}
-				}
-			}
-			
-			console.log('❌ User nie ma płatnego planu')
-			return { hasPaidPlan: false }
-		} catch (error) {
-			console.error('Błąd sprawdzania płatnego planu:', error)
-			return { hasPaidPlan: false }
-		}
-	}
-
-	// Rejestracja jako Owner (nowa organizacja)
+	// Rejestracja jako Owner - tworzy TYLKO profil użytkownika (BEZ organizacji!)
+	// Organizacja zostanie utworzona po zakupie planu w CheckoutPage
 	const signupAsOwner = async (email, password, displayName) => {
 		try {
 			const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 			const user = userCredential.user
 
-			console.log('🏢 Tworzę organizację...')
-			const orgRef = await addDoc(collection(db, 'organizations'), {
-				name: `${displayName}'s Organization`,
-				ownerId: user.uid,
-				plan: 'free',
-				maxUsers: 5,
-				createdAt: new Date().toISOString(),
-			})
-
-			console.log('👤 Tworzę profil użytkownika...')
+			console.log('🔐 Tworzę profil użytkownika (bez organizacji)...')
+			
+			// Tworzymy TYLKO profil - bez organizacji!
 			await setDoc(doc(db, 'users', user.uid), {
 				email: user.email,
 				displayName: displayName,
-				organizations: [
-					{
-						id: orgRef.id,
-						role: 'Właściciel',
-						permissions: DEFAULT_OWNER_PERMISSIONS,
-						isDefault: true,
-					},
-				],
-				currentOrganizationId: orgRef.id,
+				organizations: [], // Pusta tablica - brak organizacji
+				currentOrganizationId: null,
 				createdAt: new Date().toISOString(),
 			})
 
-			// 📧 WYSYŁAMY EMAIL WERYFIKACYJNY
+			// 📧 Wysyłamy email weryfikacyjny
 			console.log('📧 Wysyłam email weryfikacyjny...')
 			try {
 				await sendEmailVerification(user)
@@ -130,15 +89,15 @@ export function AuthProvider({ children }) {
 			const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 			const user = userCredential.user
 
-			console.log('👤 Tworzę profil użytkownika z kodem...')
+			console.log('🔐 Tworzę profil z kodem zaproszenia...')
 			await setDoc(doc(db, 'users', user.uid), {
 				email: user.email,
 				displayName: displayName,
 				organizations: [
 					{
 						id: inviteData.organizationId,
-						role: inviteData.role || 'Członek',
-						permissions: inviteData.permissions || {},
+						role: inviteData.role,
+						permissions: inviteData.permissions,
 						isDefault: true,
 					},
 				],
@@ -146,13 +105,15 @@ export function AuthProvider({ children }) {
 				createdAt: new Date().toISOString(),
 			})
 
+			// Oznacz kod jako wykorzystany
 			await updateDoc(doc(db, 'inviteCodes', inviteCode), {
 				status: 'used',
 				usedBy: user.uid,
 				usedAt: new Date().toISOString(),
 			})
 
-			// 📧 WYSYŁAMY EMAIL WERYFIKACYJNY
+			// 📧 Wysyłamy email weryfikacyjny
+			console.log('📧 Wysyłam email weryfikacyjny...')
 			try {
 				await sendEmailVerification(user)
 				console.log('✅ Email weryfikacyjny wysłany!')
@@ -167,11 +128,10 @@ export function AuthProvider({ children }) {
 		}
 	}
 
+	// Dodaj organizację do istniejącego użytkownika (przez kod)
 	const joinOrganizationWithCode = async inviteCode => {
 		try {
-			if (!currentUser) {
-				throw new Error('Musisz być zalogowany')
-			}
+			if (!currentUser) throw new Error('Musisz być zalogowany')
 
 			const inviteDoc = await getDoc(doc(db, 'inviteCodes', inviteCode))
 
@@ -189,36 +149,41 @@ export function AuthProvider({ children }) {
 				throw new Error('Ten kod wygasł')
 			}
 
+			// Pobierz profil użytkownika
 			const userRef = doc(db, 'users', currentUser.uid)
-			const userDoc = await getDoc(userRef)
+			const userSnap = await getDoc(userRef)
 
-			if (!userDoc.exists()) {
+			if (!userSnap.exists()) {
 				throw new Error('Profil użytkownika nie istnieje')
 			}
 
-			const userData = userDoc.data()
-			const existingOrgs = userData.organizations || []
+			const userData = userSnap.data()
+			const organizations = userData.organizations || []
 
-			const alreadyMember = existingOrgs.some(org => org.id === inviteData.organizationId)
-
-			if (alreadyMember) {
-				throw new Error('Już należysz do tej organizacji')
+			// Sprawdź czy już jest w tej organizacji
+			if (organizations.some(org => org.id === inviteData.organizationId)) {
+				throw new Error('Jesteś już członkiem tej organizacji')
 			}
 
+			// Dodaj nową organizację
+			const updatedOrganizations = [
+				...organizations,
+				{
+					id: inviteData.organizationId,
+					role: inviteData.role,
+					permissions: inviteData.permissions,
+					isDefault: false,
+				},
+			]
+
+			// Zaktualizuj profil
 			await updateDoc(userRef, {
-				organizations: [
-					...existingOrgs,
-					{
-						id: inviteData.organizationId,
-						role: inviteData.role || 'Członek',
-						permissions: inviteData.permissions || {},
-						isDefault: false,
-					},
-				],
+				organizations: updatedOrganizations,
 				currentOrganizationId: inviteData.organizationId,
 				updatedAt: new Date().toISOString(),
 			})
 
+			// Oznacz kod jako wykorzystany
 			await updateDoc(doc(db, 'inviteCodes', inviteCode), {
 				status: 'used',
 				usedBy: currentUser.uid,
@@ -232,6 +197,7 @@ export function AuthProvider({ children }) {
 		}
 	}
 
+	// Przełącz organizację
 	const switchOrganization = async organizationId => {
 		try {
 			if (!currentUser) return
@@ -279,7 +245,7 @@ export function AuthProvider({ children }) {
 		}
 	}
 
-	// Real-time listener dla profilu użytkownika Z RETRY LOGIC
+	// Real-time listener dla profilu użytkownika
 	useEffect(() => {
 		const unsubscribeAuth = onAuthStateChanged(auth, async user => {
 			console.log('🔐 AUTH STATE CHANGED:', user?.email || 'No user')
@@ -293,7 +259,7 @@ export function AuthProvider({ children }) {
 
 				const unsubscribeProfile = onSnapshot(
 					userDocRef,
-					async docSnap => {
+					docSnap => {
 						console.log('👤 PROFILE SNAPSHOT:', docSnap.exists(), 'Retry:', retries)
 
 						if (docSnap.exists()) {
@@ -302,85 +268,27 @@ export function AuthProvider({ children }) {
 							
 							retries = 0
 
+							// Użytkownik BEZ organizacji - to jest OK, może przeglądać landing
+							if (!profile.organizations || profile.organizations.length === 0) {
+								console.log('ℹ️ Użytkownik bez organizacji - czeka na zakup planu')
+								setUserProfile({
+									...profile,
+									role: null,
+									organizationId: null,
+								})
+								setPermissions({})
+								setLoading(false)
+								return
+							}
+
+							// Sprawdź czy użytkownik ma dostęp do aktualnej organizacji
 							const currentOrgId = profile.currentOrganizationId
 							const hasAccessToCurrentOrg = profile.organizations?.some(org => org.id === currentOrgId)
-
-							// ✅ NOWE - Sprawdź czy obecna organizacja nie jest usunięta
-							if (currentOrgId && hasAccessToCurrentOrg) {
-								const currentOrgDoc = await getDoc(doc(db, 'organizations', currentOrgId))
-								if (currentOrgDoc.exists() && currentOrgDoc.data().deleted === true) {
-									console.warn('⚠️ Obecna organizacja jest usunięta')
-									// Przełącz na pierwszą nieusunietą organizację
-									if (profile.organizations?.length > 0) {
-										const firstOrg = profile.organizations[0]
-										switchOrganization(firstOrg.id)
-										return
-									}
-									// Jeśli nie ma innych org, traktuj jako brak organizacji
-									const paidPlanCheck = await checkIfUserHasPaidPlan(user.uid)
-									
-									if (paidPlanCheck.hasPaidPlan) {
-										console.log('✅ User ma płatny plan - pozwalam na dostęp')
-										setUserProfile({
-											...profile,
-											hasNoOrganizations: true,
-											canCreateOrganization: true,
-											paidPlan: paidPlanCheck.plan,
-											organizationId: null,
-										})
-										setPermissions({})
-										setLoading(false)
-										return
-									}
-									
-									console.warn('❌ Użytkownik bez organizacji i bez płatnego planu - wylogowuję')
-									alert('❌ Zostałeś usunięty ze wszystkich organizacji.\n\nSkontaktuj się z administratorem.')
-									signOut(auth)
-									setUserProfile(null)
-									setPermissions(null)
-									setLoading(false)
-									return
-								}
-							}
 
 							if (!hasAccessToCurrentOrg && profile.organizations?.length > 0) {
 								// Przełącz na pierwszą dostępną organizację
 								const firstOrg = profile.organizations[0]
 								switchOrganization(firstOrg.id)
-								return
-							}
-
-							// ✅ NOWA LOGIKA - Sprawdź czy user ma płatny plan
-							if (profile.organizations?.length === 0 || !hasAccessToCurrentOrg) {
-								console.warn('⚠️ Użytkownik bez organizacji')
-								
-								// Sprawdź czy user ma płatny plan w którejkolwiek organizacji którą założył
-								const paidPlanCheck = await checkIfUserHasPaidPlan(user.uid)
-								
-								if (paidPlanCheck.hasPaidPlan) {
-									// ✅ User ma płatny plan - pozwól mu się zalogować
-									console.log('✅ User ma płatny plan - pozwalam na dostęp')
-									
-									// Ustaw specjalny profil "bez organizacji ale z planem"
-									setUserProfile({
-										...profile,
-										hasNoOrganizations: true,
-										canCreateOrganization: true,
-										paidPlan: paidPlanCheck.plan,
-										organizationId: null,
-									})
-									setPermissions({})
-									setLoading(false)
-									return
-								}
-								
-								// ❌ User nie ma płatnego planu - wyloguj
-								console.warn('❌ Użytkownik bez organizacji i bez płatnego planu - wylogowuję')
-								alert('❌ Zostałeś usunięty ze wszystkich organizacji.\n\nSkontaktuj się z administratorem.')
-								signOut(auth)
-								setUserProfile(null)
-								setPermissions(null)
-								setLoading(false)
 								return
 							}
 
@@ -395,7 +303,6 @@ export function AuthProvider({ children }) {
 							setPermissions(currentOrg?.permissions || {})
 							setLoading(false)
 						} else {
-							// Profil nie istnieje - daj czas na utworzenie
 							retries++
 							
 							if (retries <= maxRetries) {
@@ -426,13 +333,17 @@ export function AuthProvider({ children }) {
 			}
 		})
 
-		return unsubscribeAuth
+		return () => {
+			unsubscribeAuth()
+		}
 	}, [])
 
 	const value = {
 		currentUser,
 		userProfile,
 		organizationId: userProfile?.organizationId,
+		organizations: userProfile?.organizations || [],
+		role: userProfile?.role,
 		permissions,
 		signupAsOwner,
 		signupWithInviteCode,
@@ -444,5 +355,5 @@ export function AuthProvider({ children }) {
 		loading,
 	}
 
-	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+	return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>
 }

@@ -11,13 +11,10 @@ export default function Register() {
 	const [hasInviteCode, setHasInviteCode] = useState(!!codeFromUrl)
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
-	const [confirmPassword, setConfirmPassword] = useState('')
 	const [displayName, setDisplayName] = useState('')
 	const [inviteCode, setInviteCode] = useState(codeFromUrl || '')
 	const [error, setError] = useState('')
 	const [loading, setLoading] = useState(false)
-	const [showPassword, setShowPassword] = useState(false)
-	const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
 	// Jeśli użytkownik jest ZALOGOWANY i ma kod - dołącz do organizacji
 	useEffect(() => {
@@ -28,7 +25,7 @@ export default function Register() {
 					await joinOrganizationWithCode(codeFromUrl)
 					setSearchParams({})
 					alert('✅ Pomyślnie dołączyłeś do nowej organizacji!')
-					window.location.href = '/'  // ✅ Dashboard
+					window.location.href = '/'
 				} catch (err) {
 					setError(err.message || 'Błąd dołączania do organizacji')
 					setLoading(false)
@@ -49,13 +46,6 @@ export default function Register() {
 	const handleSubmit = async (e) => {
 		e.preventDefault()
 		setError('')
-
-		// Walidacja hasła
-		if (password !== confirmPassword) {
-			setError('❌ Hasła nie są identyczne!')
-			return
-		}
-
 		setLoading(true)
 
 		try {
@@ -64,23 +54,25 @@ export default function Register() {
 			}
 
 			if (hasInviteCode) {
-				// ✅ REJESTRACJA Z KODEM
+				// Rejestracja z kodem zaproszenia - dołącza do istniejącej organizacji
 				if (!inviteCode.trim()) {
 					throw new Error('Wpisz kod zaproszenia')
 				}
 				await signupWithInviteCode(email, password, displayName, inviteCode.toUpperCase())
 				
-				console.log('✅ Rejestracja z kodem pomyślna - przekierowuję na dashboard...')
+				// Przekieruj do dashboardu (ma już organizację)
 				setTimeout(() => {
-					window.location.href = '/'  // ✅ User z kodem → Dashboard (nie select-plan!)
+					window.location.href = '/'
 				}, 500)
 			} else {
-				// ✅ REJESTRACJA JAKO OWNER
+				// Rejestracja jako właściciel - BEZ tworzenia organizacji
 				await signupAsOwner(email, password, displayName)
 				
-				console.log('✅ Rejestracja jako owner pomyślna - przekierowuję na wybór planu...')
+				console.log('✅ Rejestracja pomyślna - przekierowuję do strony głównej...')
+				
+				// Przekieruj do landing page (zalogowany, ale bez organizacji)
 				setTimeout(() => {
-					window.location.href = '/select-plan'  // ✅ Owner → Wybór planu
+					window.location.href = '/landing'
 				}, 500)
 			}
 
@@ -110,9 +102,7 @@ export default function Register() {
 				<div className="auth-header">
 					<h1 className="auth-title">Zarejestruj się</h1>
 					<p className="auth-subtitle">
-						{codeFromUrl 
-							? '🎉 Dołącz do zespołu używając kodu zaproszenia'
-							: 'Utwórz konto i zacznij zarządzać zamówieniami'}
+						Utwórz konto i zacznij zarządzać zamówieniami
 					</p>
 				</div>
 
@@ -143,69 +133,26 @@ export default function Register() {
 
 					<div className="form-group">
 						<label>Hasło</label>
-						<div className="password-input-wrapper">
-							<input
-								type={showPassword ? "text" : "password"}
-								placeholder="Minimum 6 znaków"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								className="auth-input"
-								required
-								minLength={6}
-							/>
-							<button
-								type="button"
-								className="password-toggle"
-								onClick={() => setShowPassword(!showPassword)}
-								tabIndex={-1}>
-								{showPassword ? '👁️‍🗨️' : '👁️'}
-							</button>
-						</div>
-					</div>
-
-					<div className="form-group">
-						<label>Powtórz hasło</label>
-						<div className="password-input-wrapper">
-							<input
-								type={showConfirmPassword ? "text" : "password"}
-								placeholder="Powtórz hasło"
-								value={confirmPassword}
-								onChange={(e) => setConfirmPassword(e.target.value)}
-								className="auth-input"
-								required
-								minLength={6}
-							/>
-							<button
-								type="button"
-								className="password-toggle"
-								onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-								tabIndex={-1}>
-								{showConfirmPassword ? '👁️‍🗨️' : '👁️'}
-							</button>
-						</div>
+						<input
+							type="password"
+							placeholder="Minimum 6 znaków"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							className="auth-input"
+							required
+							minLength={6}
+						/>
 					</div>
 
 					<div className="invite-section">
-						{/* Jeśli NIE MA kodu w URL - pokaż checkbox */}
-						{!codeFromUrl && (
-							<label className="checkbox-label">
-								<input
-									type="checkbox"
-									checked={hasInviteCode}
-									onChange={(e) => setHasInviteCode(e.target.checked)}
-								/>
-								<span>Mam kod zaproszenia do zespołu</span>
-							</label>
-						)}
-
-						{/* Jeśli JEST kod w URL - pokaż info */}
-						{codeFromUrl && (
-							<div className="auth-info" style={{ marginBottom: '12px', padding: '12px', background: '#e7f3ff', borderRadius: '8px', border: '1px solid #0d6efd' }}>
-								<p style={{ margin: 0, fontSize: '14px', color: '#004085' }}>
-									<strong>💼 Kod zaproszenia:</strong> {codeFromUrl}
-								</p>
-							</div>
-						)}
+						<label className="checkbox-label">
+							<input
+								type="checkbox"
+								checked={hasInviteCode}
+								onChange={(e) => setHasInviteCode(e.target.checked)}
+							/>
+							<span>Mam kod zaproszenia do zespołu</span>
+						</label>
 
 						{hasInviteCode && (
 							<div className="form-group" style={{ marginTop: '12px' }}>
@@ -217,19 +164,7 @@ export default function Register() {
 									className="auth-input auth-input-code"
 									maxLength={6}
 									required
-									disabled={!!codeFromUrl}
-									style={codeFromUrl ? { 
-										background: '#f8f9fa', 
-										cursor: 'not-allowed',
-										color: '#495057',
-										fontWeight: 'bold'
-									} : {}}
 								/>
-								{codeFromUrl && (
-									<p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6c757d' }}>
-										Kod z zaproszenia - nie można zmienić
-									</p>
-								)}
 							</div>
 						)}
 					</div>
@@ -248,12 +183,12 @@ export default function Register() {
 				{!hasInviteCode && (
 					<div className="auth-info">
 						<p>
-							💡 <strong>Rejestracja jako właściciel</strong> - utworzysz nową firmę/organizację
+							💡 <strong>Darmowa rejestracja</strong> - po zalogowaniu wybierzesz plan i utworzysz organizację
 						</p>
 					</div>
 				)}
 
-				{hasInviteCode && !codeFromUrl && (
+				{hasInviteCode && (
 					<div className="auth-info">
 						<p>
 							👥 <strong>Dołączenie do zespołu</strong> - kod otrzymałeś od właściciela firmy

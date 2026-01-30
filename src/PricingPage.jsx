@@ -85,11 +85,13 @@ export default function PricingPage() {
 			return
 		}
 
+		// Zapisz dane do localStorage
 		localStorage.setItem('pendingOrganization', JSON.stringify({
 			companyName: companyName.trim(),
 			plan: selectedPlan
 		}))
 
+		// Przekieruj do checkout (mock payment)
 		navigate('/checkout')
 	}
 
@@ -193,7 +195,7 @@ export default function PricingPage() {
 
 						<input
 							type="text"
-							placeholder="np. Firma ABC Sp. z o.o."
+							placeholder="np. Palety Kowalski Sp. z o.o."
 							value={companyName}
 							onChange={(e) => setCompanyName(e.target.value)}
 							className="modal-input"
