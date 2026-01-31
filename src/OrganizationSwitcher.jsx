@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { db } from './firebase'
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore'
 import './OrganizationSwitcher.css'
 
 export default function OrganizationSwitcher() {
@@ -10,6 +10,8 @@ export default function OrganizationSwitcher() {
 	const [showNewOrgModal, setShowNewOrgModal] = useState(false)
 	const [newOrgName, setNewOrgName] = useState('')
 	const [newOrgLoading, setNewOrgLoading] = useState(false)
+	const [orgsWithNames, setOrgsWithNames] = useState([])
+	const [loadingNames, setLoadingNames] = useState(true)
 	const dropdownRef = useRef(null)
 
 	useEffect(() => {
@@ -23,7 +25,54 @@ export default function OrganizationSwitcher() {
 		return () => document.removeEventListener('mousedown', handleClickOutside)
 	}, [])
 
-	const organizations = userProfile?.organizations || []
+	// Pobierz nazwy organizacji z Firestore
+	useEffect(() => {
+		const fetchOrgNames = async () => {
+			if (!userProfile?.organizations) {
+				setLoadingNames(false)
+				return
+			}
+
+			setLoadingNames(true)
+			const orgsData = []
+
+			for (const org of userProfile.organizations) {
+				// Jeśli nazwa jest w profilu, użyj jej
+				if (org.name) {
+					orgsData.push(org)
+				} else {
+					// Jeśli brak nazwy, pobierz z Firestore
+					try {
+						const orgDoc = await getDoc(doc(db, 'organizations', org.id))
+						if (orgDoc.exists()) {
+							orgsData.push({
+								...org,
+								name: orgDoc.data().name || 'Nieznana organizacja'
+							})
+						} else {
+							orgsData.push({
+								...org,
+								name: 'Nieznana organizacja'
+							})
+						}
+					} catch (error) {
+						console.error('Błąd pobierania nazwy organizacji:', error)
+						orgsData.push({
+							...org,
+							name: 'Nieznana organizacja'
+						})
+					}
+				}
+			}
+
+			setOrgsWithNames(orgsData)
+			setLoadingNames(false)
+		}
+
+		fetchOrgNames()
+	}, [userProfile?.organizations])
+
+	const organizations = orgsWithNames
 	const currentOrg = organizations.find(org => org.id === organizationId)
 	const hasSubscription = userProfile?.subscription != null
 
@@ -118,6 +167,21 @@ export default function OrganizationSwitcher() {
 		return null
 	}
 
+	// Pokaż loading jeśli pobieramy nazwy
+	if (loadingNames) {
+		return (
+			<div className="organization-switcher">
+				<button className="org-switcher-button" disabled>
+					<span className="org-icon">🏢</span>
+					<div className="org-info">
+						<span className="org-role">Ładowanie...</span>
+						<span className="org-name">...</span>
+					</div>
+				</button>
+			</div>
+		)
+	}
+
 	return (
 		<>
 			<div className="organization-switcher" ref={dropdownRef}>
@@ -126,8 +190,8 @@ export default function OrganizationSwitcher() {
 					onClick={() => setIsOpen(!isOpen)}>
 					<span className="org-icon">🏢</span>
 					<div className="org-info">
-						<span className="org-role">{currentOrg?.role}</span>
-						<span className="org-name">{currentOrg?.name || 'Wybierz'}</span>
+						<span className="org-role">{currentOrg?.role || 'Brak roli'}</span>
+						<span className="org-name">{currentOrg?.name || 'Wybierz organizację'}</span>
 					</div>
 					<span className="dropdown-arrow">▼</span>
 				</button>

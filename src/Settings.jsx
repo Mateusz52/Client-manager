@@ -4,6 +4,8 @@ import { db } from './firebase'
 import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
+import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
+import ConfirmModal, { AlertModal } from './ConfirmModal'
 import './Settings.css'
 
 export default function Settings() {
@@ -11,22 +13,24 @@ export default function Settings() {
 	const [activeTab, setActiveTab] = useState('account')
 	const [loading, setLoading] = useState(true)
 	
-	// Organizacje z pełnymi danymi
 	const [organizationsData, setOrganizationsData] = useState([])
 	const [orgsLoading, setOrgsLoading] = useState(true)
 	
-	// Account form
 	const [displayName, setDisplayName] = useState('')
 	const [email, setEmail] = useState('')
 	const [saving, setSaving] = useState(false)
 	
-	// Akcje na organizacjach
-	const [actionLoading, setActionLoading] = useState(null)
-	
-	// Modal tworzenia organizacji
 	const [showNewOrgModal, setShowNewOrgModal] = useState(false)
 	const [newOrgName, setNewOrgName] = useState('')
 	const [newOrgLoading, setNewOrgLoading] = useState(false)
+
+	const [deleteModal, setDeleteModal] = useState({ isOpen: false, org: null })
+	const [deleteLoading, setDeleteLoading] = useState(false)
+
+	const [leaveModal, setLeaveModal] = useState({ isOpen: false, org: null })
+	const [leaveLoading, setLeaveLoading] = useState(false)
+
+	const [alert, setAlert] = useState({ isOpen: false, type: 'info', title: '', message: '' })
 
 	useEffect(() => {
 		if (currentUser && userProfile) {
@@ -67,6 +71,23 @@ export default function Settings() {
 		}
 	}
 
+	const showAlert = (type, title, message) => {
+		setAlert({ isOpen: true, type, title, message })
+	}
+
+	const verifyPassword = async (password) => {
+		try {
+			const credential = EmailAuthProvider.credential(currentUser.email, password)
+			await reauthenticateWithCredential(currentUser, credential)
+			return { success: true }
+		} catch (error) {
+			if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+				return { success: false, error: 'Nieprawidłowe hasło' }
+			}
+			return { success: false, error: 'Błąd weryfikacji' }
+		}
+	}
+
 	const handleSaveAccount = async (e) => {
 		e.preventDefault()
 		setSaving(true)
@@ -78,44 +99,22 @@ export default function Settings() {
 				updatedAt: new Date().toISOString()
 			})
 
-			alert('✅ Dane zapisane!')
+			showAlert('success', 'Zapisano!', 'Twoje dane zostały zaktualizowane.')
 			setSaving(false)
 		} catch (error) {
 			console.error('Błąd zapisu:', error)
-			alert('❌ Błąd zapisu danych')
+			showAlert('error', 'Błąd', 'Nie udało się zapisać danych.')
 			setSaving(false)
 		}
 	}
 
 	const handleCancelSubscription = async () => {
-		if (!userProfile?.subscription) return
-		
-		if (!confirm('Czy na pewno chcesz anulować subskrypcję?\n\nDostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.')) {
-			return
-		}
-
-		try {
-			const userRef = doc(db, 'users', currentUser.uid)
-			await updateDoc(userRef, {
-				'subscription.cancelAtPeriodEnd': true,
-				updatedAt: new Date().toISOString()
-			})
-
-			alert('✅ Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego.')
-			window.location.reload()
-		} catch (error) {
-			console.error('Błąd anulowania:', error)
-			alert('❌ Błąd anulowania subskrypcji')
-		}
+		showAlert('info', 'Funkcja wkrótce', 'Anulowanie subskrypcji będzie dostępne po integracji ze Stripe.')
 	}
 
-	// UTWÓRZ ORGANIZACJĘ
 	const handleCreateNewOrg = async (e) => {
 		e.preventDefault()
-		if (!newOrgName.trim()) {
-			alert('Wpisz nazwę firmy!')
-			return
-		}
+		if (!newOrgName.trim()) return
 
 		setNewOrgLoading(true)
 
@@ -124,7 +123,7 @@ export default function Settings() {
 			const userOwnedOrgs = userProfile?.organizations?.filter(org => org.role === 'Właściciel') || []
 
 			if (userOwnedOrgs.length >= maxOrgs) {
-				alert(`❌ Osiągnąłeś limit organizacji (${maxOrgs}).`)
+				showAlert('error', 'Limit osiągnięty', `Osiągnąłeś limit ${maxOrgs} organizacji.`)
 				setNewOrgLoading(false)
 				return
 			}
@@ -165,74 +164,74 @@ export default function Settings() {
 				updatedAt: new Date().toISOString()
 			})
 
-			alert(`✅ Utworzono nową organizację: ${newOrgName}`)
 			setShowNewOrgModal(false)
 			setNewOrgName('')
-			window.location.reload()
+			showAlert('success', 'Utworzono!', `Organizacja "${newOrgName}" została utworzona.`)
+			setTimeout(() => window.location.reload(), 1500)
 
 		} catch (error) {
 			console.error('Błąd tworzenia organizacji:', error)
-			alert(`❌ Błąd: ${error.message}`)
+			showAlert('error', 'Błąd', error.message)
 			setNewOrgLoading(false)
 		}
 	}
 
-	// OPUŚĆ ZESPÓŁ
-	const handleLeaveOrganization = async (orgId, orgName) => {
-		if (!confirm(`Czy na pewno chcesz opuścić zespół "${orgName}"?\n\nStracisz dostęp do wszystkich danych tej organizacji.`)) {
+	const handleDeleteOrganization = async ({ password }) => {
+		setDeleteLoading(true)
+
+		const verification = await verifyPassword(password)
+		if (!verification.success) {
+			showAlert('error', 'Błąd', verification.error)
+			setDeleteLoading(false)
 			return
 		}
-
-		setActionLoading(orgId)
-
-		try {
-			const leaveOrganization = httpsCallable(functions, 'leaveOrganization')
-			const result = await leaveOrganization({ organizationId: orgId })
-
-			alert(`✅ ${result.data.message}`)
-			window.location.reload()
-
-		} catch (error) {
-			console.error('Błąd opuszczania zespołu:', error)
-			alert(`❌ Błąd: ${error.message}`)
-			setActionLoading(null)
-		}
-	}
-
-	// USUŃ ZESPÓŁ
-	const handleDeleteOrganization = async (orgId, orgName) => {
-		const confirmText = prompt(
-			`⚠️ UWAGA! Ta akcja jest nieodwracalna!\n\n` +
-			`Aby usunąć zespół "${orgName}", wpisz jego nazwę poniżej:`
-		)
-
-		if (confirmText !== orgName) {
-			if (confirmText !== null) {
-				alert('❌ Nazwa zespołu nie zgadza się. Usuwanie anulowane.')
-			}
-			return
-		}
-
-		setActionLoading(orgId)
 
 		try {
 			const deleteOrganization = httpsCallable(functions, 'deleteOrganization')
 			const result = await deleteOrganization({ 
-				organizationId: orgId,
-				confirmName: confirmText
+				organizationId: deleteModal.org.id,
+				confirmName: deleteModal.org.name
 			})
 
+			setDeleteModal({ isOpen: false, org: null })
+			setDeleteLoading(false)
+			
 			const membersInfo = result.data.membersRemoved > 0 
-				? `\n${result.data.membersRemoved} członków zostało wyrzuconych.` 
+				? ` ${result.data.membersRemoved} członków zostało usuniętych.` 
 				: ''
-
-			alert(`✅ ${result.data.message}${membersInfo}`)
-			window.location.reload()
+			showAlert('success', 'Usunięto!', `Organizacja "${deleteModal.org.name}" została usunięta.${membersInfo}`)
+			setTimeout(() => window.location.reload(), 1500)
 
 		} catch (error) {
 			console.error('Błąd usuwania zespołu:', error)
-			alert(`❌ Błąd: ${error.message}`)
-			setActionLoading(null)
+			showAlert('error', 'Błąd', error.message)
+			setDeleteLoading(false)
+		}
+	}
+
+	const handleLeaveOrganization = async ({ password }) => {
+		setLeaveLoading(true)
+
+		const verification = await verifyPassword(password)
+		if (!verification.success) {
+			showAlert('error', 'Błąd', verification.error)
+			setLeaveLoading(false)
+			return
+		}
+
+		try {
+			const leaveOrganization = httpsCallable(functions, 'leaveOrganization')
+			await leaveOrganization({ organizationId: leaveModal.org.id })
+
+			setLeaveModal({ isOpen: false, org: null })
+			setLeaveLoading(false)
+			showAlert('success', 'Opuszczono!', `Opuściłeś organizację "${leaveModal.org.name}".`)
+			setTimeout(() => window.location.reload(), 1500)
+
+		} catch (error) {
+			console.error('Błąd opuszczania zespołu:', error)
+			showAlert('error', 'Błąd', error.message)
+			setLeaveLoading(false)
 		}
 	}
 
@@ -273,7 +272,6 @@ export default function Settings() {
 			</div>
 
 			<div className="settings-content">
-				{/* KONTO */}
 				{activeTab === 'account' && (
 					<div className="settings-section">
 						<h2>Informacje o koncie</h2>
@@ -309,14 +307,13 @@ export default function Settings() {
 						<div className="danger-zone">
 							<h3>Strefa niebezpieczna</h3>
 							<p>Usuń swoje konto na zawsze. Ta akcja jest nieodwracalna.</p>
-							<button className="btn-danger" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-danger" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Usuwanie konta będzie dostępne wkrótce.')}>
 								🗑️ Usuń konto
 							</button>
 						</div>
 					</div>
 				)}
 
-				{/* ORGANIZACJE */}
 				{activeTab === 'organizations' && (
 					<div className="settings-section">
 						<h2>Twoje organizacje</h2>
@@ -349,9 +346,7 @@ export default function Settings() {
 													{org.isOwner ? '👑 Właściciel' : '👤 Członek'}
 												</span>
 											</div>
-											<div className="org-card-role">
-												{org.role}
-											</div>
+											<div className="org-card-role">{org.role}</div>
 										</div>
 
 										<div className="org-card-actions">
@@ -362,10 +357,9 @@ export default function Settings() {
 														Wszyscy członkowie stracą dostęp. Twoja subskrypcja pozostanie aktywna.
 													</p>
 													<button 
-														className="btn-danger"
-														onClick={() => handleDeleteOrganization(org.id, org.name)}
-														disabled={actionLoading === org.id}>
-														{actionLoading === org.id ? 'Usuwanie...' : '🗑️ Usuń zespół'}
+														className="btn-danger" 
+														onClick={() => setDeleteModal({ isOpen: true, org })}>
+														🗑️ Usuń zespół
 													</button>
 												</>
 											) : (
@@ -375,10 +369,9 @@ export default function Settings() {
 														Możesz opuścić zespół w każdej chwili.
 													</p>
 													<button 
-														className="btn-warning"
-														onClick={() => handleLeaveOrganization(org.id, org.name)}
-														disabled={actionLoading === org.id}>
-														{actionLoading === org.id ? 'Opuszczanie...' : '🚪 Opuść zespół'}
+														className="btn-warning" 
+														onClick={() => setLeaveModal({ isOpen: true, org })}>
+														🚪 Opuść zespół
 													</button>
 												</>
 											)}
@@ -390,7 +383,6 @@ export default function Settings() {
 					</div>
 				)}
 
-				{/* SUBSKRYPCJA */}
 				{activeTab === 'subscription' && (
 					<div className="settings-section">
 						<h2>Twoja subskrypcja</h2>
@@ -431,7 +423,7 @@ export default function Settings() {
 												{new Date(subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
 											</span>
 										</div>
-										{subscription.status === 'trialing' && (
+										{subscription.status === 'trialing' && subscription.trialEndsAt && (
 											<div className="detail-row">
 												<span className="detail-label">Koniec okresu próbnego:</span>
 												<span className="detail-value">
@@ -446,7 +438,7 @@ export default function Settings() {
 									</div>
 
 									<div className="subscription-actions">
-										<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+										<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Zmiana planu będzie dostępna po integracji ze Stripe.')}>
 											🔄 Zmień plan
 										</button>
 										{!subscription.cancelAtPeriodEnd && (
@@ -484,7 +476,6 @@ export default function Settings() {
 					</div>
 				)}
 
-				{/* BEZPIECZEŃSTWO */}
 				{activeTab === 'security' && (
 					<div className="settings-section">
 						<h2>Bezpieczeństwo</h2>
@@ -492,7 +483,7 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Zmiana hasła</h3>
 							<p>Zaktualizuj swoje hasło aby zachować bezpieczeństwo konta</p>
-							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Zmiana hasła będzie dostępna wkrótce.')}>
 								🔑 Zmień hasło
 							</button>
 						</div>
@@ -500,7 +491,7 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Dwuetapowa weryfikacja (2FA)</h3>
 							<p>Dodaj dodatkową warstwę zabezpieczeń do swojego konta</p>
-							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', '2FA będzie dostępne wkrótce.')}>
 								🛡️ Włącz 2FA
 							</button>
 						</div>
@@ -508,7 +499,7 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Aktywne sesje</h3>
 							<p>Zarządzaj urządzeniami zalogowanymi do Twojego konta</p>
-							<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
+							<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Zarządzanie sesjami będzie dostępne wkrótce.')}>
 								📱 Pokaż sesje
 							</button>
 						</div>
@@ -526,103 +517,91 @@ export default function Settings() {
 
 			{/* MODAL TWORZENIA ORGANIZACJI */}
 			{showNewOrgModal && (
-				<div 
-					className='modal-overlay' 
-					onClick={() => setShowNewOrgModal(false)} 
-					style={{
-						position: 'fixed',
-						top: 0,
-						left: 0,
-						right: 0,
-						bottom: 0,
-						background: 'rgba(0,0,0,0.5)',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						zIndex: 1000
-					}}
-				>
-					<div 
-						onClick={(e) => e.stopPropagation()} 
-						style={{
-							background: 'white',
-							borderRadius: '16px',
-							padding: '32px',
-							maxWidth: '400px',
-							width: '90%'
-						}}
-					>
-						<h2 style={{ marginBottom: '8px' }}>🏢 Utwórz nową firmę</h2>
-						<p style={{ color: '#6c757d', fontSize: '14px', marginBottom: '20px' }}>
+				<div className="confirm-modal-overlay" onClick={() => setShowNewOrgModal(false)}>
+					<div className="confirm-modal confirm-modal-info" onClick={(e) => e.stopPropagation()}>
+						<div className="confirm-modal-icon">🏢</div>
+						<h2 className="confirm-modal-title">Utwórz nową firmę</h2>
+						<p className="confirm-modal-message">
 							Dodaj organizację do swojego konta
-							<span style={{ display: 'block', marginTop: '8px', color: '#667eea' }}>
+							<span style={{ display: 'block', marginTop: '8px', color: '#667eea', fontWeight: '600' }}>
 								Limit: 15 organizacji
 							</span>
 						</p>
 
 						<form onSubmit={handleCreateNewOrg}>
-							<input
-								type='text'
-								placeholder='Nazwa firmy'
-								value={newOrgName}
-								onChange={(e) => setNewOrgName(e.target.value)}
-								required
-								autoFocus
-								style={{
-									width: '100%',
-									padding: '12px 16px',
-									fontSize: '16px',
-									border: '2px solid #e0e0e0',
-									borderRadius: '8px',
-									marginBottom: '16px',
-									boxSizing: 'border-box'
-								}}
-							/>
+							<div className="confirm-modal-input-group">
+								<label>Nazwa firmy:</label>
+								<input
+									type="text"
+									placeholder="np. Palety Kowalski"
+									value={newOrgName}
+									onChange={(e) => setNewOrgName(e.target.value)}
+									className="confirm-modal-input"
+									required
+									autoFocus
+								/>
+							</div>
 
-							<div style={{ display: 'flex', gap: '12px' }}>
+							<div className="confirm-modal-actions">
 								<button 
-									type='submit' 
-									disabled={newOrgLoading}
-									style={{
-										flex: 1,
-										padding: '12px 24px',
-										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-										color: 'white',
-										border: 'none',
-										borderRadius: '8px',
-										fontSize: '16px',
-										fontWeight: '600',
-										cursor: newOrgLoading ? 'not-allowed' : 'pointer',
-										opacity: newOrgLoading ? 0.7 : 1
-									}}
-								>
-									{newOrgLoading ? 'Tworzenie...' : 'Utwórz'}
+									type="button" 
+									className="confirm-modal-btn confirm-modal-btn-cancel" 
+									onClick={() => setShowNewOrgModal(false)}>
+									Anuluj
 								</button>
 								<button 
-									type='button' 
-									onClick={() => {
-										setShowNewOrgModal(false)
-										setNewOrgName('')
-									}}
-									style={{
-										flex: 1,
-										padding: '12px 24px',
-										background: '#f5f5f5',
-										color: '#333',
-										border: '1px solid #ddd',
-										borderRadius: '8px',
-										fontSize: '16px',
-										fontWeight: '600',
-										cursor: 'pointer'
-									}}
-								>
-									Anuluj
+									type="submit" 
+									className="confirm-modal-btn confirm-modal-btn-primary" 
+									disabled={newOrgLoading}>
+									{newOrgLoading ? 'Tworzenie...' : 'Utwórz'}
 								</button>
 							</div>
 						</form>
 					</div>
 				</div>
 			)}
+
+			{/* MODAL USUWANIA ORGANIZACJI */}
+			{deleteModal.isOpen && deleteModal.org && (
+				<ConfirmModal
+					isOpen={deleteModal.isOpen}
+					onClose={() => setDeleteModal({ isOpen: false, org: null })}
+					onConfirm={handleDeleteOrganization}
+					title="Usuń organizację"
+					message={`Ta akcja jest nieodwracalna! Wszystkie dane organizacji "${deleteModal.org.name}" zostaną usunięte. Wszyscy członkowie stracą dostęp. Twoja subskrypcja pozostanie aktywna.`}
+					confirmText="🗑️ Usuń organizację"
+					cancelText="Anuluj"
+					type="danger"
+					requirePassword={true}
+					requireTextConfirm={deleteModal.org.name}
+					loading={deleteLoading}
+				/>
+			)}
+
+			{/* MODAL OPUSZCZANIA ORGANIZACJI */}
+			{leaveModal.isOpen && leaveModal.org && (
+				<ConfirmModal
+					isOpen={leaveModal.isOpen}
+					onClose={() => setLeaveModal({ isOpen: false, org: null })}
+					onConfirm={handleLeaveOrganization}
+					title="Opuść zespół"
+					message={`Czy na pewno chcesz opuścić zespół "${leaveModal.org.name}"? Stracisz dostęp do wszystkich danych tej organizacji. Aby wrócić, będziesz potrzebował nowego zaproszenia.`}
+					confirmText="🚪 Opuść zespół"
+					cancelText="Anuluj"
+					type="warning"
+					requirePassword={true}
+					loading={leaveLoading}
+				/>
+			)}
+
+			{/* ALERT MODAL */}
+			<AlertModal
+				isOpen={alert.isOpen}
+				onClose={() => setAlert({ ...alert, isOpen: false })}
+				title={alert.title}
+				message={alert.message}
+				type={alert.type}
+			/>
 		</div>
 	)
 }

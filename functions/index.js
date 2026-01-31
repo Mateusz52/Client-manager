@@ -140,3 +140,85 @@ exports.leaveOrganization = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("internal", "Błąd: " + error.message);
   }
 });
+
+// ============================================
+// USUŃ CZŁONKA Z ORGANIZACJI (NOWA FUNKCJA)
+// ============================================
+exports.removeMemberFromOrganization = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Musisz być zalogowany");
+  }
+
+  const { memberId, organizationId } = data;
+  const callerId = context.auth.uid;
+
+  if (!memberId || !organizationId) {
+    throw new functions.https.HttpsError("invalid-argument", "Brak wymaganych danych");
+  }
+
+  if (memberId === callerId) {
+    throw new functions.https.HttpsError("invalid-argument", "Nie możesz usunąć siebie");
+  }
+
+  try {
+    // Sprawdź czy caller ma uprawnienia
+    const callerDoc = await db.collection("users").doc(callerId).get();
+    if (!callerDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Użytkownik nie istnieje");
+    }
+
+    const callerData = callerDoc.data();
+    const callerOrg = callerData.organizations?.find((org) => org.id === organizationId);
+
+    if (!callerOrg) {
+      throw new functions.https.HttpsError("permission-denied", "Nie należysz do tej organizacji");
+    }
+
+    // Sprawdź czy jest właścicielem lub ma uprawnienia
+    const orgDoc = await db.collection("organizations").doc(organizationId).get();
+    const isOwner = orgDoc.exists && orgDoc.data().ownerId === callerId;
+    const canManage = callerOrg.permissions?.canManageTeam === true;
+
+    if (!isOwner && !canManage) {
+      throw new functions.https.HttpsError("permission-denied", "Brak uprawnień do zarządzania zespołem");
+    }
+
+    // Pobierz dane członka do usunięcia
+    const memberDoc = await db.collection("users").doc(memberId).get();
+    if (!memberDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Członek nie istnieje");
+    }
+
+    const memberData = memberDoc.data();
+
+    // Nie można usunąć właściciela organizacji
+    if (orgDoc.exists && orgDoc.data().ownerId === memberId) {
+      throw new functions.https.HttpsError("permission-denied", "Nie można usunąć właściciela organizacji");
+    }
+
+    // Usuń organizację z profilu członka
+    const updatedOrgs = (memberData.organizations || []).filter(
+      (org) => org.id !== organizationId
+    );
+
+    const updateData = {
+      organizations: updatedOrgs,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (memberData.currentOrganizationId === organizationId) {
+      updateData.currentOrganizationId = updatedOrgs.length > 0 ? updatedOrgs[0].id : null;
+    }
+
+    await db.collection("users").doc(memberId).update(updateData);
+
+    return {
+      success: true,
+      message: "Członek został usunięty z organizacji",
+    };
+  } catch (error) {
+    console.error("Błąd usuwania członka:", error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError("internal", "Nie udało się usunąć członka");
+  }
+});

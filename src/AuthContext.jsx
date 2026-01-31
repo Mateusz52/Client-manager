@@ -32,103 +32,137 @@ export function AuthProvider({ children }) {
 	const [userProfile, setUserProfile] = useState(null)
 	const [permissions, setPermissions] = useState(null)
 	const [loading, setLoading] = useState(true)
+	const [organizationId, setOrganizationId] = useState(null)
 
-	// Rejestracja jako Owner - tworzy TYLKO profil użytkownika (BEZ organizacji!)
-	// Organizacja zostanie utworzona po zakupie planu w CheckoutPage
+	// Rejestracja BEZ organizacji
 	const signupAsOwner = async (email, password, displayName) => {
 		try {
 			const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 			const user = userCredential.user
 
-			console.log('🔐 Tworzę profil użytkownika (bez organizacji)...')
+			console.log('Tworzę profil użytkownika BEZ organizacji...')
 			
-			// Tworzymy TYLKO profil - bez organizacji!
 			await setDoc(doc(db, 'users', user.uid), {
 				email: user.email,
 				displayName: displayName,
-				organizations: [], // Pusta tablica - brak organizacji
+				organizations: [],
 				currentOrganizationId: null,
 				createdAt: new Date().toISOString(),
 			})
 
-			// 📧 Wysyłamy email weryfikacyjny
-			console.log('📧 Wysyłam email weryfikacyjny...')
 			try {
 				await sendEmailVerification(user)
-				console.log('✅ Email weryfikacyjny wysłany!')
+				console.log('Email weryfikacyjny wysłany!')
 			} catch (emailError) {
-				console.warn('⚠️ Nie udało się wysłać emaila weryfikacyjnego:', emailError)
+				console.warn('Nie udało się wysłać emaila:', emailError)
 			}
 
 			return user
 		} catch (error) {
-			console.error('❌ Błąd rejestracji:', error)
+			console.error('Błąd rejestracji:', error)
 			throw error
 		}
 	}
 
-	// Rejestracja z kodem (dołączenie do organizacji)
+	// Rejestracja z kodem zaproszenia
+	// WAŻNE: Najpierw tworzymy usera, POTEM sprawdzamy kod (bo Firestore wymaga auth)
 	const signupWithInviteCode = async (email, password, displayName, inviteCode) => {
+		let user = null
+		
 		try {
+			// 1. NAJPIERW utwórz użytkownika
+			console.log('Tworzę użytkownika...')
+			const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+			user = userCredential.user
+			console.log('Użytkownik utworzony:', user.uid)
+
+			// 2. TERAZ sprawdź kod zaproszenia (user jest już zalogowany)
+			console.log('Sprawdzam kod zaproszenia...')
 			const inviteDoc = await getDoc(doc(db, 'inviteCodes', inviteCode))
 
 			if (!inviteDoc.exists()) {
+				// Kod nie istnieje - utwórz profil bez organizacji
+				console.log('Kod nie istnieje, tworzę profil bez org')
+				await setDoc(doc(db, 'users', user.uid), {
+					email: user.email,
+					displayName: displayName,
+					organizations: [],
+					currentOrganizationId: null,
+					createdAt: new Date().toISOString(),
+				})
 				throw new Error('Nieprawidłowy kod zaproszenia')
 			}
 
 			const inviteData = inviteDoc.data()
 
 			if (inviteData.status !== 'active') {
+				await setDoc(doc(db, 'users', user.uid), {
+					email: user.email,
+					displayName: displayName,
+					organizations: [],
+					currentOrganizationId: null,
+					createdAt: new Date().toISOString(),
+				})
 				throw new Error('Ten kod został już wykorzystany')
 			}
 
 			if (new Date(inviteData.expiresAt) < new Date()) {
+				await setDoc(doc(db, 'users', user.uid), {
+					email: user.email,
+					displayName: displayName,
+					organizations: [],
+					currentOrganizationId: null,
+					createdAt: new Date().toISOString(),
+				})
 				throw new Error('Ten kod wygasł')
 			}
 
-			const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-			const user = userCredential.user
+			// 3. Pobierz nazwę organizacji
+			const orgDoc = await getDoc(doc(db, 'organizations', inviteData.organizationId))
+			const orgName = orgDoc.exists() ? orgDoc.data().name : 'Nieznana organizacja'
 
-			console.log('🔐 Tworzę profil z kodem zaproszenia...')
+			// 4. Utwórz profil z organizacją
+			console.log('Tworzę profil z organizacją...')
 			await setDoc(doc(db, 'users', user.uid), {
 				email: user.email,
 				displayName: displayName,
 				organizations: [
 					{
 						id: inviteData.organizationId,
+						name: orgName,
 						role: inviteData.role,
 						permissions: inviteData.permissions,
 						isDefault: true,
+						joinedAt: new Date().toISOString(),
 					},
 				],
 				currentOrganizationId: inviteData.organizationId,
 				createdAt: new Date().toISOString(),
 			})
 
-			// Oznacz kod jako wykorzystany
+			// 5. Oznacz kod jako wykorzystany
 			await updateDoc(doc(db, 'inviteCodes', inviteCode), {
 				status: 'used',
 				usedBy: user.uid,
 				usedAt: new Date().toISOString(),
 			})
 
-			// 📧 Wysyłamy email weryfikacyjny
-			console.log('📧 Wysyłam email weryfikacyjny...')
 			try {
 				await sendEmailVerification(user)
-				console.log('✅ Email weryfikacyjny wysłany!')
 			} catch (emailError) {
-				console.warn('⚠️ Nie udało się wysłać emaila weryfikacyjnego:', emailError)
+				console.warn('Nie udało się wysłać emaila:', emailError)
 			}
 
+			console.log('Rejestracja z kodem zakończona sukcesem!')
 			return user
+			
 		} catch (error) {
-			console.error('❌ Błąd rejestracji z kodem:', error)
+			console.error('Błąd rejestracji z kodem:', error)
 			throw error
 		}
 	}
 
-	// Dodaj organizację do istniejącego użytkownika (przez kod)
+	// Dołączenie do organizacji (dla zalogowanych)
 	const joinOrganizationWithCode = async inviteCode => {
 		try {
 			if (!currentUser) throw new Error('Musisz być zalogowany')
@@ -149,7 +183,6 @@ export function AuthProvider({ children }) {
 				throw new Error('Ten kod wygasł')
 			}
 
-			// Pobierz profil użytkownika
 			const userRef = doc(db, 'users', currentUser.uid)
 			const userSnap = await getDoc(userRef)
 
@@ -160,95 +193,80 @@ export function AuthProvider({ children }) {
 			const userData = userSnap.data()
 			const organizations = userData.organizations || []
 
-			// Sprawdź czy już jest w tej organizacji
 			if (organizations.some(org => org.id === inviteData.organizationId)) {
 				throw new Error('Jesteś już członkiem tej organizacji')
 			}
 
-			// Dodaj nową organizację
+			const orgDoc = await getDoc(doc(db, 'organizations', inviteData.organizationId))
+			const orgName = orgDoc.exists() ? orgDoc.data().name : 'Nieznana organizacja'
+
 			const updatedOrganizations = [
 				...organizations,
 				{
 					id: inviteData.organizationId,
+					name: orgName,
 					role: inviteData.role,
 					permissions: inviteData.permissions,
-					isDefault: false,
+					isDefault: organizations.length === 0,
+					joinedAt: new Date().toISOString(),
 				},
 			]
 
-			// Zaktualizuj profil
 			await updateDoc(userRef, {
 				organizations: updatedOrganizations,
 				currentOrganizationId: inviteData.organizationId,
 				updatedAt: new Date().toISOString(),
 			})
 
-			// Oznacz kod jako wykorzystany
 			await updateDoc(doc(db, 'inviteCodes', inviteCode), {
 				status: 'used',
 				usedBy: currentUser.uid,
 				usedAt: new Date().toISOString(),
 			})
 
-			console.log('✅ Dołączono do nowej organizacji')
+			console.log('Dołączono do organizacji')
 		} catch (error) {
-			console.error('❌ Błąd dołączania do organizacji:', error)
+			console.error('Błąd dołączania:', error)
 			throw error
 		}
 	}
 
-	// Przełącz organizację
-	const switchOrganization = async organizationId => {
+	const switchOrganization = async orgId => {
 		try {
 			if (!currentUser) return
 
 			const userRef = doc(db, 'users', currentUser.uid)
 			await updateDoc(userRef, {
-				currentOrganizationId: organizationId,
+				currentOrganizationId: orgId,
 				updatedAt: new Date().toISOString(),
 			})
 
-			console.log('✅ Przełączono organizację:', organizationId)
+			setOrganizationId(orgId)
 		} catch (error) {
-			console.error('❌ Błąd przełączania organizacji:', error)
+			console.error('Błąd przełączania:', error)
 			throw error
 		}
 	}
 
 	const login = async (email, password) => {
-		try {
-			const userCredential = await signInWithEmailAndPassword(auth, email, password)
-			return userCredential
-		} catch (error) {
-			console.error('❌ Błąd logowania:', error)
-			throw error
-		}
+		return signInWithEmailAndPassword(auth, email, password)
 	}
 
 	const logout = async () => {
-		try {
-			await signOut(auth)
-			setUserProfile(null)
-			setPermissions(null)
-		} catch (error) {
-			console.error('Logout error:', error)
-			throw error
-		}
+		setUserProfile(null)
+		setPermissions(null)
+		setOrganizationId(null)
+		return signOut(auth)
 	}
 
 	const resetPassword = async email => {
-		try {
-			await sendPasswordResetEmail(auth, email)
-		} catch (error) {
-			console.error('Reset password error:', error)
-			throw error
-		}
+		return sendPasswordResetEmail(auth, email)
 	}
 
-	// Real-time listener dla profilu użytkownika
+	// Listener profilu
 	useEffect(() => {
 		const unsubscribeAuth = onAuthStateChanged(auth, async user => {
-			console.log('🔐 AUTH STATE CHANGED:', user?.email || 'No user')
+			console.log('AUTH STATE:', user?.email || 'No user')
 			setCurrentUser(user)
 
 			if (user) {
@@ -260,39 +278,33 @@ export function AuthProvider({ children }) {
 				const unsubscribeProfile = onSnapshot(
 					userDocRef,
 					docSnap => {
-						console.log('👤 PROFILE SNAPSHOT:', docSnap.exists(), 'Retry:', retries)
-
 						if (docSnap.exists()) {
 							const profile = docSnap.data()
-							console.log('✅ Profile data:', profile)
-							
 							retries = 0
 
-							// Użytkownik BEZ organizacji - to jest OK, może przeglądać landing
+							const currentOrgId = profile.currentOrganizationId
+							const hasAccessToCurrentOrg = profile.organizations?.some(org => org.id === currentOrgId)
+
+							if (!hasAccessToCurrentOrg && profile.organizations?.length > 0) {
+								const firstOrg = profile.organizations[0]
+								switchOrganization(firstOrg.id)
+								return
+							}
+
+							// Użytkownik bez organizacji - OK
 							if (!profile.organizations || profile.organizations.length === 0) {
-								console.log('ℹ️ Użytkownik bez organizacji - czeka na zakup planu')
+								console.log('Użytkownik bez organizacji - OK')
 								setUserProfile({
 									...profile,
 									role: null,
 									organizationId: null,
 								})
 								setPermissions({})
+								setOrganizationId(null)
 								setLoading(false)
 								return
 							}
 
-							// Sprawdź czy użytkownik ma dostęp do aktualnej organizacji
-							const currentOrgId = profile.currentOrganizationId
-							const hasAccessToCurrentOrg = profile.organizations?.some(org => org.id === currentOrgId)
-
-							if (!hasAccessToCurrentOrg && profile.organizations?.length > 0) {
-								// Przełącz na pierwszą dostępną organizację
-								const firstOrg = profile.organizations[0]
-								switchOrganization(firstOrg.id)
-								return
-							}
-
-							// Znajdź aktualną organizację i ustaw uprawnienia
 							const currentOrg = profile.organizations.find(org => org.id === currentOrgId)
 
 							setUserProfile({
@@ -301,15 +313,12 @@ export function AuthProvider({ children }) {
 								organizationId: currentOrgId,
 							})
 							setPermissions(currentOrg?.permissions || {})
+							setOrganizationId(currentOrgId)
 							setLoading(false)
 						} else {
 							retries++
-							
-							if (retries <= maxRetries) {
-								console.log(`⏳ Czekam na profil... (${retries}/${maxRetries})`)
-							} else {
-								console.warn('⚠️ Użytkownik bez profilu po 10 próbach - wylogowuję')
-								alert('❌ Twoje konto nie ma profilu.')
+							if (retries > maxRetries) {
+								console.warn('Brak profilu')
 								signOut(auth)
 								setUserProfile(null)
 								setPermissions(null)
@@ -318,33 +327,28 @@ export function AuthProvider({ children }) {
 						}
 					},
 					error => {
-						console.error('Error listening to profile:', error)
+						console.error('Błąd:', error)
 						setLoading(false)
 					}
 				)
 
-				return () => {
-					unsubscribeProfile()
-				}
+				return () => unsubscribeProfile()
 			} else {
 				setUserProfile(null)
 				setPermissions(null)
+				setOrganizationId(null)
 				setLoading(false)
 			}
 		})
 
-		return () => {
-			unsubscribeAuth()
-		}
+		return () => unsubscribeAuth()
 	}, [])
 
 	const value = {
 		currentUser,
 		userProfile,
-		organizationId: userProfile?.organizationId,
-		organizations: userProfile?.organizations || [],
-		role: userProfile?.role,
 		permissions,
+		organizationId,
 		signupAsOwner,
 		signupWithInviteCode,
 		joinOrganizationWithCode,
@@ -355,5 +359,5 @@ export function AuthProvider({ children }) {
 		loading,
 	}
 
-	return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

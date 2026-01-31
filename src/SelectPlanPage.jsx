@@ -1,24 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import './SelectPlanPage.css'
 
 export default function SelectPlanPage() {
 	const navigate = useNavigate()
-	const { currentUser, userProfile, joinOrganizationWithCode } = useAuth()
+	const { userProfile, joinOrganizationWithCode } = useAuth()
 	const [showJoinModal, setShowJoinModal] = useState(false)
 	const [joinCode, setJoinCode] = useState('')
 	const [joinLoading, setJoinLoading] = useState(false)
 	const [joinError, setJoinError] = useState('')
-
-	// Sprawdź czy użytkownik już ma organizację
-	useEffect(() => {
-		if (userProfile?.organizations?.length > 0) {
-			// Ma już organizację - przekieruj do dashboardu
-			console.log('✅ Użytkownik ma organizację, przekierowuję do dashboardu')
-			navigate('/')
-		}
-	}, [userProfile, navigate])
 
 	const handleBuyPlan = () => {
 		navigate('/pricing')
@@ -31,21 +22,12 @@ export default function SelectPlanPage() {
 
 		try {
 			await joinOrganizationWithCode(joinCode.toUpperCase())
-			// Po dołączeniu przekieruj do dashboardu
-			navigate('/')
+			// Po dolaczeniu przekieruj na glowna
+			window.location.href = '/'
 		} catch (error) {
-			setJoinError(error.message || 'Błąd dołączania do zespołu')
+			setJoinError(error.message || 'Blad dolaczania do zespolu')
 			setJoinLoading(false)
 		}
-	}
-
-	// Jeśli ma organizację, nie renderuj (pokazuje się loading z useEffect)
-	if (userProfile?.organizations?.length > 0) {
-		return (
-			<div className="select-plan-page">
-				<div className="checkout-loading">Przekierowuję...</div>
-			</div>
-		)
 	}
 
 	return (
@@ -53,60 +35,67 @@ export default function SelectPlanPage() {
 			<div className="select-plan-container">
 				<div className="select-plan-header">
 					<h1>🎉 Witaj w CLIENT MANAGER!</h1>
-					<p>Wybierz jedną z opcji aby rozpocząć</p>
+					<p>Wybierz jedna z opcji aby rozpoczac</p>
 				</div>
 
 				<div className="select-plan-options">
 					{/* OPCJA 1: KUP PLAN */}
 					<div className="plan-option plan-option-buy">
-						<div className="plan-option-icon">🚀</div>
-						<h2>Rozpocznij swoją firmę</h2>
+						<div className="plan-option-icon">💳</div>
+						<h2>Kup wlasny plan</h2>
 						<p>
-							Kup plan i zarządzaj swoją produkcją palet.
-							<strong> Pierwsze 3 miesiące za darmo!</strong>
+							Zaloz wlasna organizacje i zarzadzaj swoim zespolem. 
+							<strong> Pierwsze 3 miesiace za darmo!</strong>
 						</p>
 						<ul className="plan-option-features">
-							<li>✓ Pełna kontrola nad organizacją</li>
-							<li>✓ Zapraszaj członków zespołu</li>
-							<li>✓ 3 miesiące gratis</li>
-							<li>✓ Nielimitowane zamówienia</li>
+							<li>✅ Nielimitowane zamowienia</li>
+							<li>✅ Wlasne produkty</li>
+							<li>✅ Zapraszanie pracownikow</li>
+							<li>✅ Zaawansowane statystyki</li>
+							<li>✅ Export PDF</li>
+							<li>🎁 <strong>3 miesiace gratis!</strong></li>
 						</ul>
 						<button onClick={handleBuyPlan} className="btn-select-plan btn-primary">
-							💳 Kup plan
+							Wybierz plan
 						</button>
 					</div>
 
-					{/* OPCJA 2: DOŁĄCZ DO ZESPOŁU */}
+					{/* OPCJA 2: DOLACZ DO ZESPOLU */}
 					<div className="plan-option plan-option-join">
 						<div className="plan-option-icon">👥</div>
-						<h2>Dołącz do zespołu</h2>
+						<h2>Dolacz do zespolu</h2>
 						<p>
-							Masz kod zaproszenia? Dołącz do istniejącej organizacji.
+							Masz kod zaproszenia od wlasciciela firmy? 
+							Wpisz go ponizej i dolacz do zespolu.
 						</p>
 						<ul className="plan-option-features">
-							<li>✓ Pracuj w zespole</li>
-							<li>✓ Dostęp do zamówień firmy</li>
-							<li>✓ Bez dodatkowych kosztów</li>
-							<li>✓ Uprawnienia nadane przez właściciela</li>
+							<li>✅ Dostep do firmowego panelu</li>
+							<li>✅ Uprawnienia przydzielone przez wlasciciela</li>
+							<li>✅ Wspolpraca w czasie rzeczywistym</li>
+							<li>✅ Bez kosztow subskrypcji</li>
 						</ul>
 						<button onClick={() => setShowJoinModal(true)} className="btn-select-plan btn-secondary">
-							🔑 Użyj kodu
+							Mam kod zaproszenia
 						</button>
 					</div>
 				</div>
 
 				<div className="select-plan-info">
-					<p>Masz pytania? <a href="/landing#contact">Skontaktuj się z nami</a></p>
+					<p>💡 <strong>Mozesz wybrac obie opcje!</strong></p>
+					<p>
+						Kup wlasny plan dla swojej firmy i jednoczesnie dolacz do innej organizacji jako pracownik.
+						Latwo przelaczaj sie miedzy roznymi firmami.
+					</p>
 				</div>
 			</div>
 
-			{/* MODAL DOŁĄCZANIA */}
+			{/* MODAL DOLACZANIA */}
 			{showJoinModal && (
 				<div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
 					<div className="modal-card" onClick={(e) => e.stopPropagation()}>
-						<h2>🔑 Dołącz do zespołu</h2>
+						<h2>👥 Dolacz do zespolu</h2>
 						<p style={{ color: '#6c757d', fontSize: '14px', marginBottom: '20px' }}>
-							Wpisz 6-znakowy kod zaproszenia otrzymany od właściciela firmy
+							Wpisz 6-znakowy kod zaproszenia otrzymany od wlasciciela firmy
 						</p>
 
 						<form onSubmit={handleJoinTeam}>
@@ -146,7 +135,7 @@ export default function SelectPlanPage() {
 									type="submit" 
 									className="modal-btn-primary"
 									disabled={joinLoading}>
-									{joinLoading ? 'Dołączanie...' : 'Dołącz do zespołu'}
+									{joinLoading ? 'Dolaczanie...' : 'Dolacz do zespolu'}
 								</button>
 								<button 
 									type="button" 
@@ -166,10 +155,3 @@ export default function SelectPlanPage() {
 		</div>
 	)
 }
-
-
-// Okej, ale mamy problem jest fajnie wszystko ale teraz tak
-
-
-
-// Stworzyłem konto i kupiłem subskrybcje na koncie mateusz.kowalski5115@gmail.com. Zaprosiłem nowego użytkownika do mojej organizacji mateusz.kowalski2255@wp.pl. I okej zarejestrowałem sie z kodem wiec mam dostep do danej organizacji za darmo. Tak jak ma być super! Ale jednak moge dalej kliknąć dodaj nową organizacje mimo, że to konto mateusz.kowalski2255@wp.pl nie ma subskrybcji tylko dołączyło do organizacji za darmo. Rozumiesz o co chodzi?

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { useAlert } from './AlertProvider'
-import { db } from './firebase'
+import { db, functions } from './firebase'
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import emailjs from '@emailjs/browser'
 
 const ROLE_PRESETS = {
@@ -299,6 +300,7 @@ export default function TeamManagement({ isOpen, onClose }) {
 		}
 	}
 
+	// Usuwanie członka przez Cloud Function
 	const handleRemoveMember = async (memberId) => {
 		if (!organizationId) return
 
@@ -306,24 +308,14 @@ export default function TeamManagement({ isOpen, onClose }) {
 			'Czy na pewno chcesz usunąć tego członka z organizacji?\n\nZostanie automatycznie wylogowany jeśli jest zalogowany.',
 			async () => {
 				try {
-					const userRef = doc(db, 'users', memberId)
-					const userSnap = await getDoc(userRef)
-
-					if (!userSnap.exists()) {
-						error('Użytkownik nie istnieje')
-						return
-					}
-
-					const userData = userSnap.data()
-					const updatedOrgs = (userData.organizations || []).filter(
-						org => org.id !== organizationId
-					)
-
-					await updateDoc(userRef, {
-						organizations: updatedOrgs
+					// Użyj Cloud Function
+					const removeMember = httpsCallable(functions, 'removeMemberFromOrganization')
+					await removeMember({ 
+						memberId: memberId, 
+						organizationId: organizationId 
 					})
 
-					success('Członek usunięty z organizacji')
+					success('Członek usunięty z organizacji!')
 				} catch (err) {
 					console.error('Error removing member:', err)
 					error('Nie udało się usunąć członka.')
@@ -524,7 +516,7 @@ export default function TeamManagement({ isOpen, onClose }) {
 									Anuluj
 								</button>
 								<button onClick={handleSavePermissions} className='save-permissions-btn'>
-									✔ Zapisz
+									✓ Zapisz
 								</button>
 							</div>
 						</div>

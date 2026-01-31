@@ -15,8 +15,9 @@ export default function Register() {
 	const [inviteCode, setInviteCode] = useState(codeFromUrl || '')
 	const [error, setError] = useState('')
 	const [loading, setLoading] = useState(false)
+	const [success, setSuccess] = useState(false)
 
-	// Jeśli użytkownik jest ZALOGOWANY i ma kod - dołącz do organizacji
+	// Jesli user jest zalogowany i ma kod - dolacz do organizacji
 	useEffect(() => {
 		const handleCodeForLoggedInUser = async () => {
 			if (currentUser && codeFromUrl) {
@@ -24,10 +25,9 @@ export default function Register() {
 					setLoading(true)
 					await joinOrganizationWithCode(codeFromUrl)
 					setSearchParams({})
-					alert('✅ Pomyślnie dołączyłeś do nowej organizacji!')
 					window.location.href = '/'
 				} catch (err) {
-					setError(err.message || 'Błąd dołączania do organizacji')
+					setError(err.message || 'Blad dolaczania do organizacji')
 					setLoading(false)
 				}
 			}
@@ -50,43 +50,33 @@ export default function Register() {
 
 		try {
 			if (!displayName.trim()) {
-				throw new Error('Wpisz swoje imię')
+				throw new Error('Wpisz swoje imie')
 			}
 
 			if (hasInviteCode) {
-				// Rejestracja z kodem zaproszenia - dołącza do istniejącej organizacji
 				if (!inviteCode.trim()) {
 					throw new Error('Wpisz kod zaproszenia')
 				}
 				await signupWithInviteCode(email, password, displayName, inviteCode.toUpperCase())
-				
-				// Przekieruj do dashboardu (ma już organizację)
-				setTimeout(() => {
-					window.location.href = '/'
-				}, 500)
 			} else {
-				// Rejestracja jako właściciel - BEZ tworzenia organizacji
 				await signupAsOwner(email, password, displayName)
-				
-				console.log('✅ Rejestracja pomyślna - przekierowuję do strony głównej...')
-				
-				// Przekieruj do landing page (zalogowany, ale bez organizacji)
-				setTimeout(() => {
-					window.location.href = '/landing'
-				}, 500)
 			}
 
+			console.log('Rejestracja pomyslna!')
+			setSuccess(true)
+			// NIE robimy recznego przekierowania - App.jsx to obsluzy automatycznie
+
 		} catch (err) {
-			console.error('❌ Błąd rejestracji:', err)
+			console.error('Blad rejestracji:', err)
 			
-			let errorMessage = 'Wystąpił błąd'
+			let errorMessage = 'Wystapil blad'
 			
 			if (err.code === 'auth/email-already-in-use') {
-				errorMessage = '❌ Ten email jest już zarejestrowany. Masz już konto? Zaloguj się.'
+				errorMessage = 'Ten email jest juz zarejestrowany. Masz juz konto? Zaloguj sie.'
 			} else if (err.code === 'auth/weak-password') {
-				errorMessage = '❌ Hasło jest za słabe (minimum 6 znaków)'
+				errorMessage = 'Haslo jest za slabe (minimum 6 znakow)'
 			} else if (err.code === 'auth/invalid-email') {
-				errorMessage = '❌ Nieprawidłowy format emaila'
+				errorMessage = 'Nieprawidlowy format emaila'
 			} else if (err.message) {
 				errorMessage = err.message
 			}
@@ -96,19 +86,32 @@ export default function Register() {
 		}
 	}
 
+	// Po sukcesie pokaz komunikat (przekierowanie nastapi automatycznie)
+	if (success) {
+		return (
+			<div className="auth-container">
+				<div className="auth-card" style={{ textAlign: 'center' }}>
+					<div style={{ fontSize: '64px', marginBottom: '20px' }}>✅</div>
+					<h2>Rejestracja pomyslna!</h2>
+					<p style={{ color: '#666' }}>Przekierowuje...</p>
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<div className="auth-container">
 			<div className="auth-card">
 				<div className="auth-header">
-					<h1 className="auth-title">Zarejestruj się</h1>
+					<h1 className="auth-title">Zarejestruj sie</h1>
 					<p className="auth-subtitle">
-						Utwórz konto i zacznij zarządzać zamówieniami
+						Utworz konto i zacznij zarzadzac zamowieniami
 					</p>
 				</div>
 
 				<form onSubmit={handleSubmit} className="auth-form">
 					<div className="form-group">
-						<label>Twoje imię</label>
+						<label>Twoje imie</label>
 						<input
 							type="text"
 							placeholder="Jan Kowalski"
@@ -132,10 +135,10 @@ export default function Register() {
 					</div>
 
 					<div className="form-group">
-						<label>Hasło</label>
+						<label>Haslo</label>
 						<input
 							type="password"
-							placeholder="Minimum 6 znaków"
+							placeholder="Minimum 6 znakow"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							className="auth-input"
@@ -151,7 +154,7 @@ export default function Register() {
 								checked={hasInviteCode}
 								onChange={(e) => setHasInviteCode(e.target.checked)}
 							/>
-							<span>Mam kod zaproszenia do zespołu</span>
+							<span>Mam kod zaproszenia do zespolu</span>
 						</label>
 
 						{hasInviteCode && (
@@ -172,18 +175,18 @@ export default function Register() {
 					{error && <div className="auth-error">{error}</div>}
 
 					<button type="submit" className="auth-button" disabled={loading}>
-						{loading ? 'Rejestrowanie...' : 'Zarejestruj się'}
+						{loading ? 'Rejestrowanie...' : 'Zarejestruj sie'}
 					</button>
 
 					<div className="auth-footer">
-						Masz już konto? <Link to="/login">Zaloguj się</Link>
+						Masz juz konto? <Link to="/login">Zaloguj sie</Link>
 					</div>
 				</form>
 
 				{!hasInviteCode && (
 					<div className="auth-info">
 						<p>
-							💡 <strong>Darmowa rejestracja</strong> - po zalogowaniu wybierzesz plan i utworzysz organizację
+							💡 <strong>Rejestracja jako wlasciciel</strong> - po rejestracji wybierzesz plan i utworzysz firme
 						</p>
 					</div>
 				)}
@@ -191,7 +194,7 @@ export default function Register() {
 				{hasInviteCode && (
 					<div className="auth-info">
 						<p>
-							👥 <strong>Dołączenie do zespołu</strong> - kod otrzymałeś od właściciela firmy
+							👥 <strong>Dolaczenie do zespolu</strong> - kod otrzymales od wlasciciela firmy
 						</p>
 					</div>
 				)}
