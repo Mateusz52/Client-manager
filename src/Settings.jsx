@@ -4,7 +4,7 @@ import { db } from './firebase'
 import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
-import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth'
 import ConfirmModal, { AlertModal } from './ConfirmModal'
 import './Settings.css'
 
@@ -31,6 +31,16 @@ export default function Settings() {
 	const [leaveLoading, setLeaveLoading] = useState(false)
 
 	const [alert, setAlert] = useState({ isOpen: false, type: 'info', title: '', message: '' })
+
+	// ZMIANA HASŁA
+	const [showPasswordModal, setShowPasswordModal] = useState(false)
+	const [passwordData, setPasswordData] = useState({
+		currentPassword: '',
+		newPassword: '',
+		confirmPassword: ''
+	})
+	const [passwordLoading, setPasswordLoading] = useState(false)
+	const [passwordError, setPasswordError] = useState('')
 
 	useEffect(() => {
 		if (currentUser && userProfile) {
@@ -233,6 +243,90 @@ export default function Settings() {
 			showAlert('error', 'Błąd', error.message)
 			setLeaveLoading(false)
 		}
+	}
+
+	// ========================================
+	// ZMIANA HASŁA
+	// ========================================
+	const handleOpenPasswordModal = () => {
+		setPasswordData({
+			currentPassword: '',
+			newPassword: '',
+			confirmPassword: ''
+		})
+		setPasswordError('')
+		setShowPasswordModal(true)
+	}
+
+	const handlePasswordChange = (e) => {
+		const { name, value } = e.target
+		setPasswordData(prev => ({ ...prev, [name]: value }))
+		setPasswordError('')
+	}
+
+	const handleChangePassword = async (e) => {
+		e.preventDefault()
+		setPasswordError('')
+
+		// Walidacja
+		if (!passwordData.currentPassword) {
+			setPasswordError('Wpisz obecne hasło')
+			return
+		}
+
+		if (!passwordData.newPassword) {
+			setPasswordError('Wpisz nowe hasło')
+			return
+		}
+
+		if (passwordData.newPassword.length < 6) {
+			setPasswordError('Nowe hasło musi mieć minimum 6 znaków')
+			return
+		}
+
+		if (passwordData.newPassword !== passwordData.confirmPassword) {
+			setPasswordError('Nowe hasła nie są takie same')
+			return
+		}
+
+		if (passwordData.currentPassword === passwordData.newPassword) {
+			setPasswordError('Nowe hasło musi być inne niż obecne')
+			return
+		}
+
+		setPasswordLoading(true)
+
+		try {
+			// 1. Reautentykacja
+			const credential = EmailAuthProvider.credential(currentUser.email, passwordData.currentPassword)
+			await reauthenticateWithCredential(currentUser, credential)
+
+			// 2. Zmiana hasła
+			await updatePassword(currentUser, passwordData.newPassword)
+
+			setShowPasswordModal(false)
+			setPasswordData({
+				currentPassword: '',
+				newPassword: '',
+				confirmPassword: ''
+			})
+			showAlert('success', 'Hasło zmienione!', 'Twoje hasło zostało pomyślnie zaktualizowane.')
+
+		} catch (error) {
+			console.error('Błąd zmiany hasła:', error)
+			
+			if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+				setPasswordError('Nieprawidłowe obecne hasło')
+			} else if (error.code === 'auth/weak-password') {
+				setPasswordError('Nowe hasło jest za słabe')
+			} else if (error.code === 'auth/requires-recent-login') {
+				setPasswordError('Sesja wygasła. Wyloguj się i zaloguj ponownie.')
+			} else {
+				setPasswordError('Wystąpił błąd. Spróbuj ponownie.')
+			}
+		}
+
+		setPasswordLoading(false)
 	}
 
 	if (loading) {
@@ -483,32 +577,16 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Zmiana hasła</h3>
 							<p>Zaktualizuj swoje hasło aby zachować bezpieczeństwo konta</p>
-							<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Zmiana hasła będzie dostępna wkrótce.')}>
+							<button className="btn-secondary" onClick={handleOpenPasswordModal}>
 								🔑 Zmień hasło
 							</button>
 						</div>
 
-						<div className="security-item">
-							<h3>Dwuetapowa weryfikacja (2FA)</h3>
-							<p>Dodaj dodatkową warstwę zabezpieczeń do swojego konta</p>
-							<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', '2FA będzie dostępne wkrótce.')}>
-								🛡️ Włącz 2FA
-							</button>
-						</div>
-
-						<div className="security-item">
-							<h3>Aktywne sesje</h3>
-							<p>Zarządzaj urządzeniami zalogowanymi do Twojego konta</p>
-							<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Zarządzanie sesjami będzie dostępne wkrótce.')}>
-								📱 Pokaż sesje
-							</button>
-						</div>
-
-						<div className="security-item">
-							<h3>Wyloguj ze wszystkich urządzeń</h3>
-							<p>Wyloguj się ze wszystkich urządzeń oprócz tego</p>
+						<div className="security-item danger">
+							<h3>Wyloguj się</h3>
+							<p>Wyloguj się z tego urządzenia</p>
 							<button className="btn-danger" onClick={logout}>
-								🚪 Wyloguj wszędzie
+								🚪 Wyloguj
 							</button>
 						</div>
 					</div>
@@ -554,6 +632,84 @@ export default function Settings() {
 									className="confirm-modal-btn confirm-modal-btn-primary" 
 									disabled={newOrgLoading}>
 									{newOrgLoading ? 'Tworzenie...' : 'Utwórz'}
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
+
+			{/* MODAL ZMIANY HASŁA */}
+			{showPasswordModal && (
+				<div className="confirm-modal-overlay" onClick={() => setShowPasswordModal(false)}>
+					<div className="confirm-modal confirm-modal-info" onClick={(e) => e.stopPropagation()}>
+						<div className="confirm-modal-icon">🔑</div>
+						<h2 className="confirm-modal-title">Zmień hasło</h2>
+						<p className="confirm-modal-message">
+							Wprowadź obecne hasło oraz nowe hasło
+						</p>
+
+						<form onSubmit={handleChangePassword}>
+							<div className="confirm-modal-input-group">
+								<label>Obecne hasło:</label>
+								<input
+									type="password"
+									name="currentPassword"
+									placeholder="Wpisz obecne hasło"
+									value={passwordData.currentPassword}
+									onChange={handlePasswordChange}
+									className="confirm-modal-input"
+									required
+									autoFocus
+								/>
+							</div>
+
+							<div className="confirm-modal-input-group">
+								<label>Nowe hasło:</label>
+								<input
+									type="password"
+									name="newPassword"
+									placeholder="Minimum 6 znaków"
+									value={passwordData.newPassword}
+									onChange={handlePasswordChange}
+									className="confirm-modal-input"
+									required
+									minLength={6}
+								/>
+							</div>
+
+							<div className="confirm-modal-input-group">
+								<label>Potwierdź nowe hasło:</label>
+								<input
+									type="password"
+									name="confirmPassword"
+									placeholder="Powtórz nowe hasło"
+									value={passwordData.confirmPassword}
+									onChange={handlePasswordChange}
+									className="confirm-modal-input"
+									required
+								/>
+							</div>
+
+							{passwordError && (
+								<div className="confirm-modal-error">
+									❌ {passwordError}
+								</div>
+							)}
+
+							<div className="confirm-modal-actions">
+								<button 
+									type="button" 
+									className="confirm-modal-btn confirm-modal-btn-cancel" 
+									onClick={() => setShowPasswordModal(false)}
+									disabled={passwordLoading}>
+									Anuluj
+								</button>
+								<button 
+									type="submit" 
+									className="confirm-modal-btn confirm-modal-btn-primary" 
+									disabled={passwordLoading}>
+									{passwordLoading ? 'Zmieniam...' : '🔐 Zmień hasło'}
 								</button>
 							</div>
 						</form>

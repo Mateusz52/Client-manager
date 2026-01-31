@@ -13,11 +13,12 @@ export default function Register() {
 	const [password, setPassword] = useState('')
 	const [displayName, setDisplayName] = useState('')
 	const [inviteCode, setInviteCode] = useState(codeFromUrl || '')
+	const [acceptedTerms, setAcceptedTerms] = useState(false)
 	const [error, setError] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [success, setSuccess] = useState(false)
 
-	// Jesli user jest zalogowany i ma kod - dolacz do organizacji
+	// Jeśli user jest zalogowany i ma kod - dołącz do organizacji
 	useEffect(() => {
 		const handleCodeForLoggedInUser = async () => {
 			if (currentUser && codeFromUrl) {
@@ -27,7 +28,7 @@ export default function Register() {
 					setSearchParams({})
 					window.location.href = '/'
 				} catch (err) {
-					setError(err.message || 'Blad dolaczania do organizacji')
+					setError(err.message || 'Błąd dołączania do organizacji')
 					setLoading(false)
 				}
 			}
@@ -46,11 +47,18 @@ export default function Register() {
 	const handleSubmit = async (e) => {
 		e.preventDefault()
 		setError('')
+
+		// Walidacja akceptacji regulaminu
+		if (!acceptedTerms) {
+			setError('Musisz zaakceptować regulamin, aby się zarejestrować')
+			return
+		}
+
 		setLoading(true)
 
 		try {
 			if (!displayName.trim()) {
-				throw new Error('Wpisz swoje imie')
+				throw new Error('Wpisz swoje imię')
 			}
 
 			if (hasInviteCode) {
@@ -62,21 +70,20 @@ export default function Register() {
 				await signupAsOwner(email, password, displayName)
 			}
 
-			console.log('Rejestracja pomyslna!')
+			console.log('Rejestracja pomyślna!')
 			setSuccess(true)
-			// NIE robimy recznego przekierowania - App.jsx to obsluzy automatycznie
 
 		} catch (err) {
-			console.error('Blad rejestracji:', err)
+			console.error('Błąd rejestracji:', err)
 			
-			let errorMessage = 'Wystapil blad'
+			let errorMessage = 'Wystąpił błąd'
 			
 			if (err.code === 'auth/email-already-in-use') {
-				errorMessage = 'Ten email jest juz zarejestrowany. Masz juz konto? Zaloguj sie.'
+				errorMessage = 'Ten email jest już zarejestrowany. Masz już konto? Zaloguj się.'
 			} else if (err.code === 'auth/weak-password') {
-				errorMessage = 'Haslo jest za slabe (minimum 6 znakow)'
+				errorMessage = 'Hasło jest za słabe (minimum 6 znaków)'
 			} else if (err.code === 'auth/invalid-email') {
-				errorMessage = 'Nieprawidlowy format emaila'
+				errorMessage = 'Nieprawidłowy format emaila'
 			} else if (err.message) {
 				errorMessage = err.message
 			}
@@ -86,14 +93,14 @@ export default function Register() {
 		}
 	}
 
-	// Po sukcesie pokaz komunikat (przekierowanie nastapi automatycznie)
+	// Po sukcesie pokaż komunikat
 	if (success) {
 		return (
 			<div className="auth-container">
 				<div className="auth-card" style={{ textAlign: 'center' }}>
 					<div style={{ fontSize: '64px', marginBottom: '20px' }}>✅</div>
-					<h2>Rejestracja pomyslna!</h2>
-					<p style={{ color: '#666' }}>Przekierowuje...</p>
+					<h2>Rejestracja pomyślna!</h2>
+					<p style={{ color: '#666' }}>Przekierowuję...</p>
 				</div>
 			</div>
 		)
@@ -103,15 +110,15 @@ export default function Register() {
 		<div className="auth-container">
 			<div className="auth-card">
 				<div className="auth-header">
-					<h1 className="auth-title">Zarejestruj sie</h1>
+					<h1 className="auth-title">Zarejestruj się</h1>
 					<p className="auth-subtitle">
-						Utworz konto i zacznij zarzadzac zamowieniami
+						Utwórz konto i zacznij zarządzać zamówieniami
 					</p>
 				</div>
 
 				<form onSubmit={handleSubmit} className="auth-form">
 					<div className="form-group">
-						<label>Twoje imie</label>
+						<label>Twoje imię</label>
 						<input
 							type="text"
 							placeholder="Jan Kowalski"
@@ -135,10 +142,10 @@ export default function Register() {
 					</div>
 
 					<div className="form-group">
-						<label>Haslo</label>
+						<label>Hasło</label>
 						<input
 							type="password"
-							placeholder="Minimum 6 znakow"
+							placeholder="Minimum 6 znaków"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							className="auth-input"
@@ -154,7 +161,7 @@ export default function Register() {
 								checked={hasInviteCode}
 								onChange={(e) => setHasInviteCode(e.target.checked)}
 							/>
-							<span>Mam kod zaproszenia do zespolu</span>
+							<span>Mam kod zaproszenia do zespołu</span>
 						</label>
 
 						{hasInviteCode && (
@@ -172,21 +179,47 @@ export default function Register() {
 						)}
 					</div>
 
+					{/* CHECKBOX AKCEPTACJI REGULAMINU */}
+					<div className="terms-section">
+						<label className={`checkbox-label terms-checkbox ${!acceptedTerms && error ? 'terms-error' : ''}`}>
+							<input
+								type="checkbox"
+								checked={acceptedTerms}
+								onChange={(e) => {
+									setAcceptedTerms(e.target.checked)
+									if (error && e.target.checked) setError('')
+								}}
+							/>
+							<span>
+								Akceptuję{' '}
+								<Link to="/regulamin" target="_blank" className="terms-link">
+									Regulamin serwisu
+								</Link>
+								<span className="required-star">*</span>
+							</span>
+						</label>
+					</div>
+
 					{error && <div className="auth-error">{error}</div>}
 
-					<button type="submit" className="auth-button" disabled={loading}>
-						{loading ? 'Rejestrowanie...' : 'Zarejestruj sie'}
+					<button 
+						type="submit" 
+						className="auth-button" 
+						disabled={loading || !acceptedTerms}
+						title={!acceptedTerms ? 'Zaakceptuj regulamin, aby kontynuować' : ''}
+					>
+						{loading ? 'Rejestrowanie...' : 'Zarejestruj się'}
 					</button>
 
 					<div className="auth-footer">
-						Masz juz konto? <Link to="/login">Zaloguj sie</Link>
+						Masz już konto? <Link to="/login">Zaloguj się</Link>
 					</div>
 				</form>
 
 				{!hasInviteCode && (
 					<div className="auth-info">
 						<p>
-							💡 <strong>Rejestracja jako wlasciciel</strong> - po rejestracji wybierzesz plan i utworzysz firme
+							💡 <strong>Rejestracja jako właściciel</strong> - po rejestracji wybierzesz plan i utworzysz firmę
 						</p>
 					</div>
 				)}
@@ -194,7 +227,7 @@ export default function Register() {
 				{hasInviteCode && (
 					<div className="auth-info">
 						<p>
-							👥 <strong>Dolaczenie do zespolu</strong> - kod otrzymales od wlasciciela firmy
+							👥 <strong>Dołączenie do zespołu</strong> - kod otrzymałeś od właściciela firmy
 						</p>
 					</div>
 				)}

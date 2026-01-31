@@ -54,13 +54,15 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 
 	const availableCurrencies = ['PLN', 'EUR', 'USD', 'GBP', 'CHF', 'CZK']
 
-	// Obsługa editingOrder
+	// ZMIANA 1: Reaguj TYLKO na editingOrder?.id, NIE na productTypes!
 	useEffect(() => {
 		if (editingOrder) {
 			setFormData(editingOrder)
 			const productType = productTypes.find(pt => pt.name === editingOrder.type)
 			setSelectedProductType(productType || null)
-			if (productType) {
+			if (editingOrder.currency) {
+				setCurrentCurrency(editingOrder.currency)
+			} else if (productType) {
 				setCurrentCurrency(productType.currency || 'PLN')
 			}
 			
@@ -70,10 +72,10 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			if (editingOrder.dateEnd) {
 				setEndDate(new Date(editingOrder.dateEnd))
 			}
-		} else {
-			resetForm()
 		}
-	}, [editingOrder, productTypes])
+		// NIE wywołuj resetForm() tutaj - to powodowało reset przy zmianie productTypes!
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [editingOrder?.id]) // <-- TYLKO editingOrder.id!
 
 	useEffect(() => {
 		if (selectedProductType) {
@@ -182,20 +184,10 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 		}
 	}
 
-	const handleCurrencyChange = async (newCurrency) => {
+	// ZMIANA 2: Tylko zmień state lokalnie, NIE zapisuj do Firebase!
+	const handleCurrencyChange = (newCurrency) => {
 		setCurrentCurrency(newCurrency)
-		
-		if (selectedProductType && currentUser && organizationId) {
-			try {
-				const productRef = doc(db, 'organizations', organizationId, 'productTypes', selectedProductType.id)
-				await updateDoc(productRef, {
-					currency: newCurrency,
-					updatedAt: new Date().toISOString()
-				})
-			} catch (err) {
-				console.error('❌ Błąd aktualizacji waluty:', err)
-			}
-		}
+		// NIE zapisujemy tutaj do Firebase - zrobimy to przy SUBMIT
 	}
 
 	// ========================================
@@ -283,7 +275,7 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 	// SUBMIT
 	// ========================================
 
-	const handleSubmit = e => {
+	const handleSubmit = async e => {
 		e.preventDefault()
 
 		const errors = {
@@ -341,6 +333,22 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			showToast('Wypełnij wszystkie wymagane pola!', 'error')
 			window.scrollTo({ top: 0, behavior: 'smooth' })
 			return
+		}
+
+		// Zapisz walutę do konfiguracji produktu PRZY SUBMIT (jeśli się zmieniła)
+		if (selectedProductType && currentUser && organizationId) {
+			const originalCurrency = selectedProductType.currency || 'PLN'
+			if (currentCurrency !== originalCurrency) {
+				try {
+					const productRef = doc(db, 'organizations', organizationId, 'productTypes', selectedProductType.id)
+					await updateDoc(productRef, {
+						currency: currentCurrency,
+						updatedAt: new Date().toISOString()
+					})
+				} catch (err) {
+					console.error('❌ Błąd aktualizacji waluty:', err)
+				}
+			}
 		}
 
 		const orderData = {
@@ -519,7 +527,6 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 										value={currentCurrency}
 										onChange={(e) => handleCurrencyChange(e.target.value)}
 										className='currency-select-inline'
-										disabled={!selectedProductType}
 									>
 										{availableCurrencies.map(curr => (
 											<option key={curr} value={curr}>{curr}</option>

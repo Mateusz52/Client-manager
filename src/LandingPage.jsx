@@ -471,19 +471,12 @@ export default function LandingPage() {
 								}}>
 								Polityka prywatności
 							</a>
-							<a
-								href='#'
-								onClick={e => {
-									e.preventDefault()
-									alert('Regulamin - wkrótce')
-								}}>
-								Regulamin
-							</a>
+							<Link to='/regulamin'>Regulamin</Link>
 						</div>
 
 						<div className='footer-column'>
 							<h4>Kontakt</h4>
-							<a href='mailto:kontakt@clientmanager.pl'>kontakt@ordermanager.pl</a>
+							<a href='mailto:kontakt@ordermanager.pl'>kontakt@ordermanager.pl</a>
 							<a href='tel:+48123456789'>+48 123 456 789</a>
 						</div>
 					</div>
