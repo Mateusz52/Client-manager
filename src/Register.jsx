@@ -11,6 +11,9 @@ export default function Register() {
 	const [hasInviteCode, setHasInviteCode] = useState(!!codeFromUrl)
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
+	const [confirmPassword, setConfirmPassword] = useState('')
+	const [showPassword, setShowPassword] = useState(false)
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 	const [displayName, setDisplayName] = useState('')
 	const [inviteCode, setInviteCode] = useState(codeFromUrl || '')
 	const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -47,6 +50,17 @@ export default function Register() {
 	const handleSubmit = async (e) => {
 		e.preventDefault()
 		setError('')
+
+		// Walidacja hasła
+		if (password !== confirmPassword) {
+			setError('Hasła nie są identyczne')
+			return
+		}
+
+		if (password.length < 6) {
+			setError('Hasło musi mieć minimum 6 znaków')
+			return
+		}
 
 		// Walidacja akceptacji regulaminu
 		if (!acceptedTerms) {
@@ -143,15 +157,76 @@ export default function Register() {
 
 					<div className="form-group">
 						<label>Hasło</label>
-						<input
-							type="password"
-							placeholder="Minimum 6 znaków"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							className="auth-input"
-							required
-							minLength={6}
-						/>
+						<div className="password-input-wrapper">
+							<input
+								type={showPassword ? 'text' : 'password'}
+								placeholder="Minimum 6 znaków"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								className="auth-input"
+								required
+								minLength={6}
+							/>
+							<button
+								type="button"
+								className="password-toggle-btn"
+								onClick={() => setShowPassword(!showPassword)}
+								tabIndex={-1}
+								aria-label={showPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
+							>
+								{showPassword ? (
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+										<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+										<line x1="1" y1="1" x2="23" y2="23"/>
+									</svg>
+								) : (
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+										<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+										<circle cx="12" cy="12" r="3"/>
+									</svg>
+								)}
+							</button>
+						</div>
+					</div>
+
+					<div className="form-group">
+						<label>Powtórz hasło</label>
+						<div className="password-input-wrapper">
+							<input
+								type={showConfirmPassword ? 'text' : 'password'}
+								placeholder="Wpisz hasło ponownie"
+								value={confirmPassword}
+								onChange={(e) => setConfirmPassword(e.target.value)}
+								className={`auth-input ${confirmPassword && password !== confirmPassword ? 'input-error' : ''}`}
+								required
+								minLength={6}
+							/>
+							<button
+								type="button"
+								className="password-toggle-btn"
+								onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+								tabIndex={-1}
+								aria-label={showConfirmPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
+							>
+								{showConfirmPassword ? (
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+										<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+										<line x1="1" y1="1" x2="23" y2="23"/>
+									</svg>
+								) : (
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+										<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+										<circle cx="12" cy="12" r="3"/>
+									</svg>
+								)}
+							</button>
+						</div>
+						{confirmPassword && password !== confirmPassword && (
+							<small className="field-error">Hasła nie są identyczne</small>
+						)}
+						{confirmPassword && password === confirmPassword && confirmPassword.length >= 6 && (
+							<small className="field-success">✓ Hasła są zgodne</small>
+						)}
 					</div>
 
 					<div className="invite-section">
@@ -205,7 +280,7 @@ export default function Register() {
 					<button 
 						type="submit" 
 						className="auth-button" 
-						disabled={loading || !acceptedTerms}
+						disabled={loading || !acceptedTerms || (confirmPassword && password !== confirmPassword)}
 						title={!acceptedTerms ? 'Zaakceptuj regulamin, aby kontynuować' : ''}
 					>
 						{loading ? 'Rejestrowanie...' : 'Zarejestruj się'}

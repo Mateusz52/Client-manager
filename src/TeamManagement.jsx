@@ -195,9 +195,9 @@ export default function TeamManagement({ isOpen, onClose }) {
 				
 				try {
 					await navigator.clipboard.writeText(code)
-					success(`Email wysłany na: ${inviteEmail}\n\n📋 Kod ${code} skopiowany do schowka!\n\nLink rejestracji:\n${inviteLink}`, 'Email wysłany')
+					success(`✅ Zaproszenie utworzone!\n\n📧 Email wysłany na: ${inviteEmail}\n\n⚠️ UWAGA: Niektóre skrzynki (WP, Onet, Interia) blokują takie emaile.\nJeśli email nie dojdzie - wyślij kod ręcznie przez SMS lub komunikator.\n\n🔑 Kod: ${code} (skopiowany do schowka!)\n\n🔗 Link:\n${inviteLink}`, 'Zaproszenie gotowe')
 				} catch (clipboardError) {
-					success(`Email wysłany na: ${inviteEmail}\n\nKod: ${code}\n\nLink rejestracji:\n${inviteLink}`, 'Email wysłany')
+					success(`✅ Zaproszenie utworzone!\n\n📧 Email wysłany na: ${inviteEmail}\n\n⚠️ UWAGA: Niektóre skrzynki (WP, Onet, Interia) blokują takie emaile.\nJeśli email nie dojdzie - wyślij kod ręcznie przez SMS lub komunikator.\n\n🔑 Kod: ${code}\n\n🔗 Link:\n${inviteLink}`, 'Zaproszenie gotowe')
 				}
 				
 			} catch (emailError) {

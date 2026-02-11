@@ -27,21 +27,17 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 		quantity: '',
 		price: '',
 		productDetails: {},
-		// Nowe pola dla zamówień łączonych
 		isLinked: false,
 		linkedProducts: [],
-		// Załączniki
 		attachments: []
 	})
 
 	const [selectedProductType, setSelectedProductType] = useState(null)
 	const [currentCurrency, setCurrentCurrency] = useState('PLN')
 	
-	// Stany dla DatePicker
 	const [startDate, setStartDate] = useState(null)
 	const [endDate, setEndDate] = useState(null)
 	
-	// Stan dla błędów walidacji
 	const [validationErrors, setValidationErrors] = useState({
 		type: false,
 		client: false,
@@ -54,7 +50,7 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 
 	const availableCurrencies = ['PLN', 'EUR', 'USD', 'GBP', 'CHF', 'CZK']
 
-	// ZMIANA 1: Reaguj TYLKO na editingOrder?.id, NIE na productTypes!
+	// Wypełnij formularz gdy editingOrder się zmieni
 	useEffect(() => {
 		if (editingOrder) {
 			setFormData(editingOrder)
@@ -73,9 +69,8 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 				setEndDate(new Date(editingOrder.dateEnd))
 			}
 		}
-		// NIE wywołuj resetForm() tutaj - to powodowało reset przy zmianie productTypes!
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [editingOrder?.id]) // <-- TYLKO editingOrder.id!
+	}, [editingOrder?.id])
 
 	useEffect(() => {
 		if (selectedProductType) {
@@ -184,10 +179,8 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 		}
 	}
 
-	// ZMIANA 2: Tylko zmień state lokalnie, NIE zapisuj do Firebase!
 	const handleCurrencyChange = (newCurrency) => {
 		setCurrentCurrency(newCurrency)
-		// NIE zapisujemy tutaj do Firebase - zrobimy to przy SUBMIT
 	}
 
 	// ========================================
@@ -232,7 +225,6 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			linkedProducts: prev.linkedProducts.map((product, i) => {
 				if (i === index) {
 					if (field === 'type') {
-						// Znajdź typ produktu i ustaw unit
 						const productType = productTypes.find(pt => pt.name === value)
 						return {
 							...product,
@@ -290,7 +282,6 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 
 		let hasError = false
 
-		// Walidacja podstawowych pól
 		if (!formData.type) {
 			errors.type = true
 			hasError = true
@@ -316,7 +307,6 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			hasError = true
 		}
 
-		// Walidacja linked products
 		if (formData.isLinked) {
 			for (let i = 0; i < formData.linkedProducts.length; i++) {
 				const product = formData.linkedProducts[i]
@@ -335,7 +325,7 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			return
 		}
 
-		// Zapisz walutę do konfiguracji produktu PRZY SUBMIT (jeśli się zmieniła)
+		// Zapisz walutę do konfiguracji produktu
 		if (selectedProductType && currentUser && organizationId) {
 			const originalCurrency = selectedProductType.currency || 'PLN'
 			if (currentCurrency !== originalCurrency) {
@@ -357,10 +347,15 @@ export default function AddForm({ onSubmit, editingOrder, onCancel, productTypes
 			unit: selectedProductType?.unit || 'szt'
 		}
 
+		// Wywołaj onSubmit z Dashboard
 		onSubmit(orderData)
 
-		if (!editingOrder) {
-			resetForm()
+		// ✅ ZAWSZE resetuj formularz po UDANYM submit (dodanie LUB edycja)
+		resetForm()
+		
+		// Jeśli była edycja, wywołaj też onCancel żeby Dashboard ustawił editingId na null
+		if (editingOrder) {
+			onCancel()
 		}
 	}
 

@@ -1,4 +1,4 @@
-const functions = require("firebase-functions");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -7,52 +7,81 @@ const db = admin.firestore();
 // ============================================
 // USUŃ ORGANIZACJĘ (tylko właściciel)
 // ============================================
-exports.deleteOrganization = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Musisz być zalogowany");
+exports.deleteOrganization = onCall(async (request) => {
+  // Sprawdź czy user jest zalogowany
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Musisz być zalogowany"
+    );
   }
 
-  const { organizationId, confirmName } = data;
-  const userId = context.auth.uid;
+  const { organizationId, confirmName } = request.data;
+  const userId = request.auth.uid;
 
   if (!organizationId) {
-    throw new functions.https.HttpsError("invalid-argument", "Brak ID organizacji");
+    throw new HttpsError(
+      "invalid-argument",
+      "Brak ID organizacji"
+    );
   }
 
   try {
+    // 1. Pobierz organizację i sprawdź czy user jest właścicielem
     const orgRef = db.collection("organizations").doc(organizationId);
     const orgDoc = await orgRef.get();
 
     if (!orgDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Organizacja nie istnieje");
+      throw new HttpsError(
+        "not-found",
+        "Organizacja nie istnieje"
+      );
     }
 
     const orgData = orgDoc.data();
 
+    // Sprawdź czy user jest właścicielem (ownerId)
     if (orgData.ownerId !== userId) {
-      throw new functions.https.HttpsError("permission-denied", "Tylko właściciel może usunąć organizację");
+      throw new HttpsError(
+        "permission-denied",
+        "Tylko właściciel może usunąć organizację"
+      );
     }
 
+    // Sprawdź potwierdzenie nazwy
     if (confirmName !== orgData.name) {
-      throw new functions.https.HttpsError("invalid-argument", "Nazwa organizacji nie zgadza się");
+      throw new HttpsError(
+        "invalid-argument",
+        "Nazwa organizacji nie zgadza się"
+      );
     }
 
-    const usersSnap = await db.collection("users").get();
+    // 2. Znajdź wszystkich użytkowników z tą organizacją
+    const usersRef = db.collection("users");
+    const usersSnap = await usersRef.get();
+
     const batch = db.batch();
     let membersCount = 0;
 
     usersSnap.forEach((userDoc) => {
       const userData = userDoc.data();
       const userOrgs = userData.organizations || [];
+
+      // Sprawdź czy user ma tę organizację
       const hasOrg = userOrgs.some((org) => org.id === organizationId);
 
       if (hasOrg) {
         membersCount++;
+
+        // Usuń organizację z profilu użytkownika
         const updatedOrgs = userOrgs.filter((org) => org.id !== organizationId);
+
+        // Jeśli to była aktualna organizacja - przełącz
         let newCurrentOrgId = userData.currentOrganizationId;
         if (newCurrentOrgId === organizationId) {
           newCurrentOrgId = updatedOrgs.length > 0 ? updatedOrgs[0].id : null;
         }
+
         batch.update(userDoc.ref, {
           organizations: updatedOrgs,
           currentOrganizationId: newCurrentOrgId,
@@ -61,11 +90,20 @@ exports.deleteOrganization = functions.https.onCall(async (data, context) => {
       }
     });
 
-    const inviteCodesSnap = await db.collection("inviteCodes")
-      .where("organizationId", "==", organizationId).get();
-    inviteCodesSnap.forEach((doc) => batch.delete(doc.ref));
+    // 3. Usuń kody zaproszeń powiązane z organizacją
+    const inviteCodesRef = db.collection("inviteCodes");
+    const inviteCodesSnap = await inviteCodesRef
+      .where("organizationId", "==", organizationId)
+      .get();
 
+    inviteCodesSnap.forEach((inviteDoc) => {
+      batch.delete(inviteDoc.ref);
+    });
+
+    // 4. Usuń dokument organizacji
     batch.delete(orgRef);
+
+    // Wykonaj wszystkie operacje
     await batch.commit();
 
     return {
@@ -74,55 +112,91 @@ exports.deleteOrganization = functions.https.onCall(async (data, context) => {
       membersRemoved: membersCount - 1,
     };
   } catch (error) {
-    if (error instanceof functions.https.HttpsError) throw error;
-    throw new functions.https.HttpsError("internal", "Błąd: " + error.message);
+    console.error("Błąd usuwania organizacji:", error);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError(
+      "internal",
+      "Błąd usuwania organizacji: " + error.message
+    );
   }
 });
 
 // ============================================
 // OPUŚĆ ORGANIZACJĘ (dla członków)
 // ============================================
-exports.leaveOrganization = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Musisz być zalogowany");
+exports.leaveOrganization = onCall(async (request) => {
+  // Sprawdź czy user jest zalogowany
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Musisz być zalogowany"
+    );
   }
 
-  const { organizationId } = data;
-  const userId = context.auth.uid;
+  const { organizationId } = request.data;
+  const userId = request.auth.uid;
 
   if (!organizationId) {
-    throw new functions.https.HttpsError("invalid-argument", "Brak ID organizacji");
+    throw new HttpsError(
+      "invalid-argument",
+      "Brak ID organizacji"
+    );
   }
 
   try {
+    // 1. Pobierz organizację
     const orgRef = db.collection("organizations").doc(organizationId);
     const orgDoc = await orgRef.get();
 
     if (!orgDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Organizacja nie istnieje");
+      throw new HttpsError(
+        "not-found",
+        "Organizacja nie istnieje"
+      );
     }
 
     const orgData = orgDoc.data();
 
+    // Nie pozwól właścicielowi opuścić własnej organizacji
     if (orgData.ownerId === userId) {
-      throw new functions.https.HttpsError("permission-denied", "Właściciel nie może opuścić własnej organizacji");
+      throw new HttpsError(
+        "permission-denied",
+        "Właściciel nie może opuścić własnej organizacji. Użyj opcji 'Usuń zespół'."
+      );
     }
 
+    // 2. Pobierz profil użytkownika
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Profil nie istnieje");
+      throw new HttpsError(
+        "not-found",
+        "Profil użytkownika nie istnieje"
+      );
     }
 
     const userData = userDoc.data();
     const userOrgs = userData.organizations || [];
 
-    if (!userOrgs.some((org) => org.id === organizationId)) {
-      throw new functions.https.HttpsError("not-found", "Nie należysz do tej organizacji");
+    // Sprawdź czy user jest w tej organizacji
+    const hasOrg = userOrgs.some((org) => org.id === organizationId);
+
+    if (!hasOrg) {
+      throw new HttpsError(
+        "not-found",
+        "Nie należysz do tej organizacji"
+      );
     }
 
+    // 3. Usuń organizację z profilu
     const updatedOrgs = userOrgs.filter((org) => org.id !== organizationId);
+
+    // Jeśli to była aktualna organizacja - przełącz
     let newCurrentOrgId = userData.currentOrganizationId;
     if (newCurrentOrgId === organizationId) {
       newCurrentOrgId = updatedOrgs.length > 0 ? updatedOrgs[0].id : null;
@@ -134,91 +208,20 @@ exports.leaveOrganization = functions.https.onCall(async (data, context) => {
       updatedAt: new Date().toISOString(),
     });
 
-    return { success: true, message: `Opuściłeś organizację "${orgData.name}"` };
-  } catch (error) {
-    if (error instanceof functions.https.HttpsError) throw error;
-    throw new functions.https.HttpsError("internal", "Błąd: " + error.message);
-  }
-});
-
-// ============================================
-// USUŃ CZŁONKA Z ORGANIZACJI (NOWA FUNKCJA)
-// ============================================
-exports.removeMemberFromOrganization = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Musisz być zalogowany");
-  }
-
-  const { memberId, organizationId } = data;
-  const callerId = context.auth.uid;
-
-  if (!memberId || !organizationId) {
-    throw new functions.https.HttpsError("invalid-argument", "Brak wymaganych danych");
-  }
-
-  if (memberId === callerId) {
-    throw new functions.https.HttpsError("invalid-argument", "Nie możesz usunąć siebie");
-  }
-
-  try {
-    // Sprawdź czy caller ma uprawnienia
-    const callerDoc = await db.collection("users").doc(callerId).get();
-    if (!callerDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Użytkownik nie istnieje");
-    }
-
-    const callerData = callerDoc.data();
-    const callerOrg = callerData.organizations?.find((org) => org.id === organizationId);
-
-    if (!callerOrg) {
-      throw new functions.https.HttpsError("permission-denied", "Nie należysz do tej organizacji");
-    }
-
-    // Sprawdź czy jest właścicielem lub ma uprawnienia
-    const orgDoc = await db.collection("organizations").doc(organizationId).get();
-    const isOwner = orgDoc.exists && orgDoc.data().ownerId === callerId;
-    const canManage = callerOrg.permissions?.canManageTeam === true;
-
-    if (!isOwner && !canManage) {
-      throw new functions.https.HttpsError("permission-denied", "Brak uprawnień do zarządzania zespołem");
-    }
-
-    // Pobierz dane członka do usunięcia
-    const memberDoc = await db.collection("users").doc(memberId).get();
-    if (!memberDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Członek nie istnieje");
-    }
-
-    const memberData = memberDoc.data();
-
-    // Nie można usunąć właściciela organizacji
-    if (orgDoc.exists && orgDoc.data().ownerId === memberId) {
-      throw new functions.https.HttpsError("permission-denied", "Nie można usunąć właściciela organizacji");
-    }
-
-    // Usuń organizację z profilu członka
-    const updatedOrgs = (memberData.organizations || []).filter(
-      (org) => org.id !== organizationId
-    );
-
-    const updateData = {
-      organizations: updatedOrgs,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (memberData.currentOrganizationId === organizationId) {
-      updateData.currentOrganizationId = updatedOrgs.length > 0 ? updatedOrgs[0].id : null;
-    }
-
-    await db.collection("users").doc(memberId).update(updateData);
-
     return {
       success: true,
-      message: "Członek został usunięty z organizacji",
+      message: `Opuściłeś organizację "${orgData.name}"`,
     };
   } catch (error) {
-    console.error("Błąd usuwania członka:", error);
-    if (error instanceof functions.https.HttpsError) throw error;
-    throw new functions.https.HttpsError("internal", "Nie udało się usunąć członka");
+    console.error("Błąd opuszczania organizacji:", error);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError(
+      "internal",
+      "Błąd opuszczania organizacji: " + error.message
+    );
   }
 });

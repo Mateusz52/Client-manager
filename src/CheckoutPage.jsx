@@ -32,7 +32,7 @@ export default function CheckoutPage() {
 			// Dane subskrypcji
 			const subscriptionData = {
 				plan: pendingOrg.plan.id,
-				status: 'active', // ACTIVE - trial to tylko info o braku platnosci
+				status: 'trialing',
 				trialEndsAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
 				currentPeriodStart: new Date().toISOString(),
 				currentPeriodEnd: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
@@ -43,32 +43,41 @@ export default function CheckoutPage() {
 				stripeSubscriptionId: `sub_mock_${Date.now()}`
 			}
 
-			// 1. Utworz organizacje z subskrypcja
+			const limitsData = {
+				maxOrganizations: pendingOrg.plan.id === 'monthly' ? 1 : 999,
+			}
+
+			// Utwórz organizację
 			const orgRef = await addDoc(collection(db, 'organizations'), {
 				name: pendingOrg.companyName,
 				ownerId: currentUser.uid,
 				ownerEmail: currentUser.email,
-				subscription: subscriptionData, // Subskrypcja w organizacji
+				subscription: subscriptionData,
+				limits: limitsData,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString()
 			})
 
-			// 2. Pobierz aktualne dane usera
+			// Pobierz aktualne dane użytkownika
 			const userRef = doc(db, 'users', currentUser.uid)
 			const userDoc = await getDoc(userRef)
-			const userData = userDoc.exists() ? userDoc.data() : {}
-			const existingOrgs = userData.organizations || []
+			const userData = userDoc.data() || {}
+			const existingOrgs = userData?.organizations || []
 
-			// 3. Zaktualizuj profil usera - dodaj org i subskrypcje
+			// ✅ WAŻNE: Zapisz subskrypcję TAKŻE do profilu użytkownika!
+			// Dzięki temu gdy usunie organizację, nadal będziemy wiedzieć że ma opłacony plan
 			await setDoc(userRef, {
 				...userData,
-				subscription: subscriptionData, // Subskrypcja TAKZE w profilu usera!
+				// Subskrypcja na poziomie użytkownika
+				subscription: subscriptionData,
+				limits: limitsData,
+				// Lista organizacji
 				organizations: [
 					...existingOrgs,
 					{
 						id: orgRef.id,
 						name: pendingOrg.companyName,
-						role: 'Wlasciciel',
+						role: 'Właściciel',
 						permissions: {
 							canAddOrders: true,
 							canEditOrders: true,
@@ -92,8 +101,8 @@ export default function CheckoutPage() {
 			setSuccess(true)
 
 		} catch (error) {
-			console.error('Blad tworzenia organizacji:', error)
-			alert('Wystapil blad. Sprobuj ponownie.')
+			console.error('Błąd tworzenia organizacji:', error)
+			alert('Wystąpił błąd podczas tworzenia organizacji. Spróbuj ponownie.')
 			setLoading(false)
 		}
 	}
@@ -101,7 +110,7 @@ export default function CheckoutPage() {
 	if (!pendingOrg) {
 		return (
 			<div className="checkout-page">
-				<div className="checkout-loading">Ladowanie...</div>
+				<div className="checkout-loading">Ładowanie...</div>
 			</div>
 		)
 	}
@@ -110,10 +119,11 @@ export default function CheckoutPage() {
 		<div className="checkout-page">
 			<div className="checkout-container">
 				{success ? (
+					/* EKRAN SUKCESU */
 					<div className="checkout-success">
 						<div className="success-icon">✅</div>
 						<h2>Organizacja utworzona!</h2>
-						<p>Twoja subskrypcja jest juz aktywna. Mozesz teraz korzystac z pelni mozliwosci systemu.</p>
+						<p>Twoja subskrypcja jest już aktywna. Możesz teraz korzystać z pełni możliwości systemu.</p>
 						
 						<div className="success-details">
 							<div className="success-item">
@@ -125,8 +135,8 @@ export default function CheckoutPage() {
 								<span className="success-value">{pendingOrg.plan.name}</span>
 							</div>
 							<div className="success-item">
-								<span className="success-label">Okres probny:</span>
-								<span className="success-value">3 miesiace gratis 🎁</span>
+								<span className="success-label">Okres próbny:</span>
+								<span className="success-value">3 miesiące gratis 🎁</span>
 							</div>
 						</div>
 
@@ -137,25 +147,27 @@ export default function CheckoutPage() {
 									window.location.reload()
 								}}
 								className="btn-checkout btn-primary">
-								🏠 Przejdz do aplikacji
+								🏠 Przejdź do aplikacji
 							</button>
 						</div>
 					</div>
 				) : loading ? (
+					/* EKRAN ŁADOWANIA */
 					<div className="checkout-processing">
 						<div className="processing-spinner"></div>
-						<h2>Przetwarzanie platnosci...</h2>
-						<p>Prosze czekac, to zajmie chwile</p>
+						<h2>Przetwarzanie płatności...</h2>
+						<p>Proszę czekać, to zajmie chwilę</p>
 					</div>
 				) : (
+					/* EKRAN CHECKOUT */
 					<>
 						<div className="checkout-header">
-							<h1>💳 Podsumowanie zamowienia</h1>
-							<p>Sprawdz szczegoly przed zakupem</p>
+							<h1>💳 Podsumowanie zamówienia</h1>
+							<p>Sprawdź szczegóły przed zakupem</p>
 						</div>
 
 						<div className="checkout-summary">
-							<h3>📋 Szczegoly organizacji</h3>
+							<h3>📋 Szczegóły organizacji</h3>
 							<div className="summary-item">
 								<span className="summary-label">Nazwa firmy:</span>
 								<span className="summary-value">{pendingOrg.companyName}</span>
@@ -166,27 +178,27 @@ export default function CheckoutPage() {
 							</div>
 							<div className="summary-item">
 								<span className="summary-label">Cena:</span>
-								<span className="summary-value">{pendingOrg.plan.price} zl/{pendingOrg.plan.period}</span>
+								<span className="summary-value">{pendingOrg.plan.price} zł/{pendingOrg.plan.period}</span>
 							</div>
 							<div className="summary-item">
-								<span className="summary-label">Okres probny:</span>
-								<span className="summary-value trial-highlight">3 miesiace gratis 🎁</span>
+								<span className="summary-label">Okres próbny:</span>
+								<span className="summary-value trial-highlight">3 miesiące gratis 🎁</span>
 							</div>
 							<div className="summary-divider"></div>
 							<div className="summary-item summary-total">
-								<span className="summary-label">Do zaplaty dzisiaj:</span>
-								<span className="summary-value">0 zl</span>
+								<span className="summary-label">Do zapłaty dzisiaj:</span>
+								<span className="summary-value">0 zł</span>
 							</div>
 							<div className="summary-note">
-								Pierwsza platnosc {pendingOrg.plan.total} zl nastapi {new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pl-PL')}
+								Pierwsza płatność {pendingOrg.plan.total} zł nastąpi {new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('pl-PL')}
 							</div>
 						</div>
 
 						<div className="checkout-info">
 							<h4>ℹ️ To jest wersja testowa (Mock Payment)</h4>
 							<p>
-								W prawdziwej wersji tutaj pojawi sie formularz platnosci Stripe. 
-								Na razie kliknij "Potwierdz zakup" aby symulowac udana platnosc.
+								W prawdziwej wersji tutaj pojawi się formularz płatności Stripe. 
+								Na razie kliknij "Potwierdź zakup" aby symulować udaną płatność i utworzyć organizację.
 							</p>
 						</div>
 
@@ -194,13 +206,13 @@ export default function CheckoutPage() {
 							<button 
 								onClick={() => navigate('/pricing')}
 								className="btn-checkout btn-secondary">
-								← Wroc do planow
+								← Wróć do planów
 							</button>
 							<button 
 								onClick={handleMockPayment}
 								className="btn-checkout btn-primary"
 								disabled={loading}>
-								Potwierdz zakup (Mock)
+								Potwierdź zakup (Mock)
 							</button>
 						</div>
 					</>

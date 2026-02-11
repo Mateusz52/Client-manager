@@ -1,44 +1,56 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { db } from './firebase'
-import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from './firebase'
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth'
-import ConfirmModal, { AlertModal } from './ConfirmModal'
+import { doc, getDoc, updateDoc, setDoc, collection, addDoc, query, where, getDocs, deleteDoc } from 'firebase/firestore'
 import './Settings.css'
 
+// Funkcja sprawdzająca czy subskrypcja jest aktywna
+function isSubscriptionActive(sub) {
+	if (!sub) return false
+	if (!sub.plan) return false
+	if (sub.status === 'canceled') return false
+	if (!sub.currentPeriodEnd) return false
+	
+	const endDate = new Date(sub.currentPeriodEnd)
+	const now = new Date()
+	
+	return endDate > now
+}
+
 export default function Settings() {
+	const navigate = useNavigate()
 	const { currentUser, userProfile, logout } = useAuth()
 	const [activeTab, setActiveTab] = useState('account')
+	const [orgData, setOrgData] = useState(null)
 	const [loading, setLoading] = useState(true)
 	
-	const [organizationsData, setOrganizationsData] = useState([])
-	const [orgsLoading, setOrgsLoading] = useState(true)
-	
+	// Account form
 	const [displayName, setDisplayName] = useState('')
 	const [email, setEmail] = useState('')
 	const [saving, setSaving] = useState(false)
-	
+
+	// Organizations
 	const [showNewOrgModal, setShowNewOrgModal] = useState(false)
 	const [newOrgName, setNewOrgName] = useState('')
 	const [newOrgLoading, setNewOrgLoading] = useState(false)
+	const [ownedSubscription, setOwnedSubscription] = useState(null)
+	const [checkingSubscription, setCheckingSubscription] = useState(true)
+	const [ownedOrganizationIds, setOwnedOrganizationIds] = useState([]) // Lista ID organizacji gdzie user jest WŁAŚCICIELEM
 
-	const [deleteModal, setDeleteModal] = useState({ isOpen: false, org: null })
-	const [deleteLoading, setDeleteLoading] = useState(false)
+	// Delete organization
+	const [showDeleteOrgModal, setShowDeleteOrgModal] = useState(false)
+	const [orgToDelete, setOrgToDelete] = useState(null)
+	const [deleteOrgConfirmName, setDeleteOrgConfirmName] = useState('')
+	const [deleteOrgPassword, setDeleteOrgPassword] = useState('')
+	const [deletingOrg, setDeletingOrg] = useState(false)
+	const [deleteOrgError, setDeleteOrgError] = useState('')
 
-	const [leaveModal, setLeaveModal] = useState({ isOpen: false, org: null })
-	const [leaveLoading, setLeaveLoading] = useState(false)
-
-	const [alert, setAlert] = useState({ isOpen: false, type: 'info', title: '', message: '' })
-
-	// ZMIANA HASŁA
+	// Password change
 	const [showPasswordModal, setShowPasswordModal] = useState(false)
-	const [passwordData, setPasswordData] = useState({
-		currentPassword: '',
-		newPassword: '',
-		confirmPassword: ''
-	})
+	const [currentPassword, setCurrentPassword] = useState('')
+	const [newPassword, setNewPassword] = useState('')
+	const [confirmPassword, setConfirmPassword] = useState('')
 	const [passwordLoading, setPasswordLoading] = useState(false)
 	const [passwordError, setPasswordError] = useState('')
 
@@ -46,55 +58,93 @@ export default function Settings() {
 		if (currentUser && userProfile) {
 			setDisplayName(userProfile.displayName || '')
 			setEmail(currentUser.email || '')
-			setLoading(false)
-			loadOrganizationsData()
+			loadOrgData()
+			checkOwnedSubscription()
+			checkOwnedOrganizations() // Sprawdź które organizacje user NAPRAWDĘ posiada
 		}
 	}, [currentUser, userProfile])
 
-	const loadOrganizationsData = async () => {
+	const loadOrgData = async () => {
 		try {
-			setOrgsLoading(true)
-			const organizations = userProfile?.organizations || []
-			const orgsWithData = []
-			
-			for (const org of organizations) {
-				const orgRef = doc(db, 'organizations', org.id)
-				const orgSnap = await getDoc(orgRef)
-
-				if (orgSnap.exists()) {
-					const orgData = orgSnap.data()
-					orgsWithData.push({
-						id: org.id,
-						name: orgData.name,
-						role: org.role,
-						isOwner: orgData.ownerId === currentUser.uid,
-						createdAt: orgData.createdAt
-					})
-				}
+			const orgId = userProfile?.currentOrganizationId
+			if (!orgId) {
+				setLoading(false)
+				return
 			}
-			
-			setOrganizationsData(orgsWithData)
-			setOrgsLoading(false)
+
+			const orgRef = doc(db, 'organizations', orgId)
+			const orgSnap = await getDoc(orgRef)
+
+			if (orgSnap.exists()) {
+				setOrgData(orgSnap.data())
+			}
+			setLoading(false)
 		} catch (error) {
-			console.error('Błąd ładowania organizacji:', error)
-			setOrgsLoading(false)
+			console.error('Błąd ładowania danych:', error)
+			setLoading(false)
 		}
 	}
 
-	const showAlert = (type, title, message) => {
-		setAlert({ isOpen: true, type, title, message })
+	// Sprawdź które organizacje user NAPRAWDĘ posiada (przez ownerId w bazie)
+	const checkOwnedOrganizations = async () => {
+		if (!currentUser) return
+
+		try {
+			const orgsRef = collection(db, 'organizations')
+			const q = query(orgsRef, where('ownerId', '==', currentUser.uid))
+			const querySnapshot = await getDocs(q)
+
+			const ownedIds = querySnapshot.docs.map(doc => doc.id)
+			setOwnedOrganizationIds(ownedIds)
+		} catch (error) {
+			console.error('Błąd sprawdzania własności organizacji:', error)
+			setOwnedOrganizationIds([])
+		}
 	}
 
-	const verifyPassword = async (password) => {
-		try {
-			const credential = EmailAuthProvider.credential(currentUser.email, password)
-			await reauthenticateWithCredential(currentUser, credential)
-			return { success: true }
-		} catch (error) {
-			if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-				return { success: false, error: 'Nieprawidłowe hasło' }
+	// Sprawdź WŁASNĄ subskrypcję
+	const checkOwnedSubscription = async () => {
+		if (!currentUser) {
+			setCheckingSubscription(false)
+			return
+		}
+
+		// 1. Sprawdź w profilu
+		if (userProfile?.subscription) {
+			if (isSubscriptionActive(userProfile.subscription)) {
+				setOwnedSubscription(userProfile.subscription)
+				setCheckingSubscription(false)
+				return
 			}
-			return { success: false, error: 'Błąd weryfikacji' }
+		}
+
+		// 2. Szukaj organizacji gdzie user jest WŁAŚCICIELEM
+		try {
+			const orgsRef = collection(db, 'organizations')
+			const q = query(orgsRef, where('ownerId', '==', currentUser.uid))
+			const querySnapshot = await getDocs(q)
+
+			for (const docSnap of querySnapshot.docs) {
+				const orgDataDoc = docSnap.data()
+				if (isSubscriptionActive(orgDataDoc.subscription)) {
+					// Przepisz do profilu
+					const userRef = doc(db, 'users', currentUser.uid)
+					await setDoc(userRef, {
+						subscription: orgDataDoc.subscription,
+						limits: orgDataDoc.limits || { maxOrganizations: 1 },
+					}, { merge: true })
+					
+					setOwnedSubscription(orgDataDoc.subscription)
+					setCheckingSubscription(false)
+					return
+				}
+			}
+
+			setOwnedSubscription(null)
+			setCheckingSubscription(false)
+		} catch (error) {
+			console.error('Błąd sprawdzania subskrypcji:', error)
+			setCheckingSubscription(false)
 		}
 	}
 
@@ -109,31 +159,75 @@ export default function Settings() {
 				updatedAt: new Date().toISOString()
 			})
 
-			showAlert('success', 'Zapisano!', 'Twoje dane zostały zaktualizowane.')
+			alert('✅ Dane zapisane!')
 			setSaving(false)
 		} catch (error) {
 			console.error('Błąd zapisu:', error)
-			showAlert('error', 'Błąd', 'Nie udało się zapisać danych.')
+			alert('❌ Błąd zapisu danych')
 			setSaving(false)
 		}
 	}
 
 	const handleCancelSubscription = async () => {
-		showAlert('info', 'Funkcja wkrótce', 'Anulowanie subskrypcji będzie dostępne po integracji ze Stripe.')
+		if (!confirm('Czy na pewno chcesz anulować subskrypcję?\n\nDostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.')) {
+			return
+		}
+
+		try {
+			// Anuluj w PROFILU UŻYTKOWNIKA
+			const userRef = doc(db, 'users', currentUser.uid)
+			await updateDoc(userRef, {
+				'subscription.cancelAtPeriodEnd': true,
+				updatedAt: new Date().toISOString()
+			})
+
+			// Anuluj też we wszystkich organizacjach gdzie user jest właścicielem
+			const orgsRef = collection(db, 'organizations')
+			const q = query(orgsRef, where('ownerId', '==', currentUser.uid))
+			const querySnapshot = await getDocs(q)
+
+			for (const docSnap of querySnapshot.docs) {
+				await updateDoc(doc(db, 'organizations', docSnap.id), {
+					'subscription.cancelAtPeriodEnd': true,
+					updatedAt: new Date().toISOString()
+				})
+			}
+
+			alert('✅ Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego.')
+			window.location.reload()
+		} catch (error) {
+			console.error('Błąd anulowania:', error)
+			alert('❌ Błąd anulowania subskrypcji')
+		}
 	}
 
 	const handleCreateNewOrg = async (e) => {
 		e.preventDefault()
-		if (!newOrgName.trim()) return
+		if (!newOrgName.trim()) {
+			alert('Wpisz nazwę firmy!')
+			return
+		}
 
 		setNewOrgLoading(true)
 
-		try {
-			const maxOrgs = 15
-			const userOwnedOrgs = userProfile?.organizations?.filter(org => org.role === 'Właściciel') || []
+		// BLOKADA - sprawdź czy ma aktywną subskrypcję
+		if (!isSubscriptionActive(ownedSubscription)) {
+			alert('❌ Nie masz aktywnej subskrypcji.\n\nAby utworzyć własną organizację, musisz najpierw kupić plan.')
+			setNewOrgLoading(false)
+			navigate('/pricing')
+			return
+		}
 
-			if (userOwnedOrgs.length >= maxOrgs) {
-				showAlert('error', 'Limit osiągnięty', `Osiągnąłeś limit ${maxOrgs} organizacji.`)
+		try {
+			const subscriptionData = ownedSubscription
+			const limitsData = userProfile?.limits || { maxOrganizations: 1 }
+
+			// Sprawdź limit organizacji
+			const userOwnedOrgs = userProfile?.organizations?.filter(org => org.role === 'Właściciel') || []
+			const maxOrgs = limitsData.maxOrganizations || 1
+
+			if (userOwnedOrgs.length >= maxOrgs && maxOrgs !== 999) {
+				alert(`❌ Osiągnąłeś limit organizacji (${maxOrgs}).\n\nAby utworzyć więcej firm, zmień plan na Półroczny lub Roczny.`)
 				setNewOrgLoading(false)
 				return
 			}
@@ -142,14 +236,21 @@ export default function Settings() {
 				name: newOrgName,
 				ownerId: currentUser.uid,
 				ownerEmail: currentUser.email,
+				subscription: subscriptionData,
+				limits: limitsData,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString()
 			})
 
 			const userRef = doc(db, 'users', currentUser.uid)
-			const existingOrgs = userProfile?.organizations || []
-			
-			await updateDoc(userRef, {
+			const userDoc = await getDoc(userRef)
+			const userData = userDoc.data() || {}
+			const existingOrgs = userData?.organizations || []
+
+			await setDoc(userRef, {
+				...userData,
+				subscription: subscriptionData,
+				limits: limitsData,
 				organizations: [
 					...existingOrgs,
 					{
@@ -164,7 +265,7 @@ export default function Settings() {
 							canExportPDF: true,
 							canConfigureProducts: true,
 							canManageTeam: true,
-							canChangePlan: true,
+							canChangePlan: true
 						},
 						isDefault: existingOrgs.length === 0,
 						joinedAt: new Date().toISOString()
@@ -172,174 +273,231 @@ export default function Settings() {
 				],
 				currentOrganizationId: newOrgRef.id,
 				updatedAt: new Date().toISOString()
-			})
+			}, { merge: true })
 
+			alert(`✅ Utworzono nową organizację: ${newOrgName}`)
 			setShowNewOrgModal(false)
 			setNewOrgName('')
-			showAlert('success', 'Utworzono!', `Organizacja "${newOrgName}" została utworzona.`)
-			setTimeout(() => window.location.reload(), 1500)
+			window.location.reload()
 
 		} catch (error) {
 			console.error('Błąd tworzenia organizacji:', error)
-			showAlert('error', 'Błąd', error.message)
+			alert(`❌ Błąd: ${error.message}`)
 			setNewOrgLoading(false)
 		}
 	}
 
-	const handleDeleteOrganization = async ({ password }) => {
-		setDeleteLoading(true)
+	// ============================================
+	// USUWANIE ORGANIZACJI
+	// ============================================
+	
+	// Sprawdź czy user jest PRAWDZIWYM właścicielem (przez ownerId w bazie)
+	const isRealOwner = (orgId) => {
+		return ownedOrganizationIds.includes(orgId)
+	}
 
-		const verification = await verifyPassword(password)
-		if (!verification.success) {
-			showAlert('error', 'Błąd', verification.error)
-			setDeleteLoading(false)
+	const openDeleteOrgModal = (org) => {
+		// Dodatkowe sprawdzenie przed otwarciem modala
+		if (!isRealOwner(org.id)) {
+			alert('❌ Nie masz uprawnień do usunięcia tej organizacji.\n\nTylko właściciel może usunąć organizację.')
 			return
 		}
 
-		try {
-			const deleteOrganization = httpsCallable(functions, 'deleteOrganization')
-			const result = await deleteOrganization({ 
-				organizationId: deleteModal.org.id,
-				confirmName: deleteModal.org.name
-			})
+		setOrgToDelete(org)
+		setDeleteOrgConfirmName('')
+		setDeleteOrgPassword('')
+		setDeleteOrgError('')
+		setShowDeleteOrgModal(true)
+	}
 
-			setDeleteModal({ isOpen: false, org: null })
-			setDeleteLoading(false)
+	const closeDeleteOrgModal = () => {
+		setShowDeleteOrgModal(false)
+		setOrgToDelete(null)
+		setDeleteOrgConfirmName('')
+		setDeleteOrgPassword('')
+		setDeleteOrgError('')
+	}
+
+	const handleDeleteOrganization = async () => {
+		if (!orgToDelete) return
+
+		setDeleteOrgError('')
+
+		// Sprawdź czy wpisana nazwa się zgadza
+		if (deleteOrgConfirmName !== orgToDelete.name) {
+			setDeleteOrgError('Wpisana nazwa nie zgadza się z nazwą organizacji')
+			return
+		}
+
+		// Sprawdź czy hasło zostało wpisane
+		if (!deleteOrgPassword) {
+			setDeleteOrgError('Wpisz swoje hasło')
+			return
+		}
+
+		setDeletingOrg(true)
+
+		try {
+			// 1. Najpierw zweryfikuj hasło użytkownika
+			const { EmailAuthProvider, reauthenticateWithCredential } = await import('firebase/auth')
+			const credential = EmailAuthProvider.credential(currentUser.email, deleteOrgPassword)
 			
-			const membersInfo = result.data.membersRemoved > 0 
-				? ` ${result.data.membersRemoved} członków zostało usuniętych.` 
-				: ''
-			showAlert('success', 'Usunięto!', `Organizacja "${deleteModal.org.name}" została usunięta.${membersInfo}`)
-			setTimeout(() => window.location.reload(), 1500)
+			try {
+				await reauthenticateWithCredential(currentUser, credential)
+			} catch (authError) {
+				if (authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
+					setDeleteOrgError('Nieprawidłowe hasło')
+				} else {
+					setDeleteOrgError('Błąd weryfikacji: ' + authError.message)
+				}
+				setDeletingOrg(false)
+				return
+			}
+
+			const orgId = orgToDelete.id
+
+			// 2. KRYTYCZNE SPRAWDZENIE: Czy user jest PRAWDZIWYM właścicielem w bazie?
+			const orgRef = doc(db, 'organizations', orgId)
+			const orgSnap = await getDoc(orgRef)
+
+			if (!orgSnap.exists()) {
+				setDeleteOrgError('Organizacja nie istnieje')
+				setDeletingOrg(false)
+				return
+			}
+
+			const orgDataFromDb = orgSnap.data()
+			if (orgDataFromDb.ownerId !== currentUser.uid) {
+				setDeleteOrgError('Nie masz uprawnień do usunięcia tej organizacji. Tylko właściciel może to zrobić.')
+				setDeletingOrg(false)
+				return
+			}
+
+			// 3. Znajdź wszystkich użytkowników którzy należą do tej organizacji
+			const usersRef = collection(db, 'users')
+			const usersSnapshot = await getDocs(usersRef)
+
+			for (const userDoc of usersSnapshot.docs) {
+				const userData = userDoc.data()
+				const userOrgs = userData.organizations || []
+
+				// Sprawdź czy użytkownik należy do tej organizacji
+				const belongsToOrg = userOrgs.some(org => org.id === orgId)
+
+				if (belongsToOrg) {
+					// Usuń organizację z listy użytkownika
+					const updatedOrgs = userOrgs.filter(org => org.id !== orgId)
+
+					// Jeśli to była aktualna organizacja, przełącz na inną
+					let newCurrentOrgId = userData.currentOrganizationId
+					if (newCurrentOrgId === orgId) {
+						newCurrentOrgId = updatedOrgs.length > 0 ? updatedOrgs[0].id : null
+					}
+
+					await updateDoc(doc(db, 'users', userDoc.id), {
+						organizations: updatedOrgs,
+						currentOrganizationId: newCurrentOrgId,
+						updatedAt: new Date().toISOString()
+					})
+				}
+			}
+
+			// 4. Usuń subkolekcje organizacji (orders, productTypes)
+			// Usuń zamówienia
+			const ordersRef = collection(db, 'organizations', orgId, 'orders')
+			const ordersSnapshot = await getDocs(ordersRef)
+			for (const orderDoc of ordersSnapshot.docs) {
+				await deleteDoc(doc(db, 'organizations', orgId, 'orders', orderDoc.id))
+			}
+
+			// Usuń typy produktów
+			const productTypesRef = collection(db, 'organizations', orgId, 'productTypes')
+			const productTypesSnapshot = await getDocs(productTypesRef)
+			for (const ptDoc of productTypesSnapshot.docs) {
+				await deleteDoc(doc(db, 'organizations', orgId, 'productTypes', ptDoc.id))
+			}
+
+			// 5. Usuń kody zaproszenia powiązane z organizacją
+			const inviteCodesRef = collection(db, 'inviteCodes')
+			const inviteCodesQuery = query(inviteCodesRef, where('organizationId', '==', orgId))
+			const inviteCodesSnapshot = await getDocs(inviteCodesQuery)
+			for (const codeDoc of inviteCodesSnapshot.docs) {
+				await deleteDoc(doc(db, 'inviteCodes', codeDoc.id))
+			}
+
+			// 6. Usuń dokument organizacji
+			await deleteDoc(doc(db, 'organizations', orgId))
+
+			alert(`✅ Organizacja "${orgToDelete.name}" została usunięta.\n\nTwoja subskrypcja pozostaje aktywna.`)
+			closeDeleteOrgModal()
+			window.location.reload()
 
 		} catch (error) {
-			console.error('Błąd usuwania zespołu:', error)
-			showAlert('error', 'Błąd', error.message)
-			setDeleteLoading(false)
+			console.error('Błąd usuwania organizacji:', error)
+			setDeleteOrgError(`Błąd: ${error.message}`)
+			setDeletingOrg(false)
 		}
-	}
-
-	const handleLeaveOrganization = async ({ password }) => {
-		setLeaveLoading(true)
-
-		const verification = await verifyPassword(password)
-		if (!verification.success) {
-			showAlert('error', 'Błąd', verification.error)
-			setLeaveLoading(false)
-			return
-		}
-
-		try {
-			const leaveOrganization = httpsCallable(functions, 'leaveOrganization')
-			await leaveOrganization({ organizationId: leaveModal.org.id })
-
-			setLeaveModal({ isOpen: false, org: null })
-			setLeaveLoading(false)
-			showAlert('success', 'Opuszczono!', `Opuściłeś organizację "${leaveModal.org.name}".`)
-			setTimeout(() => window.location.reload(), 1500)
-
-		} catch (error) {
-			console.error('Błąd opuszczania zespołu:', error)
-			showAlert('error', 'Błąd', error.message)
-			setLeaveLoading(false)
-		}
-	}
-
-	// ========================================
-	// ZMIANA HASŁA
-	// ========================================
-	const handleOpenPasswordModal = () => {
-		setPasswordData({
-			currentPassword: '',
-			newPassword: '',
-			confirmPassword: ''
-		})
-		setPasswordError('')
-		setShowPasswordModal(true)
-	}
-
-	const handlePasswordChange = (e) => {
-		const { name, value } = e.target
-		setPasswordData(prev => ({ ...prev, [name]: value }))
-		setPasswordError('')
 	}
 
 	const handleChangePassword = async (e) => {
 		e.preventDefault()
 		setPasswordError('')
 
-		// Walidacja
-		if (!passwordData.currentPassword) {
-			setPasswordError('Wpisz obecne hasło')
+		if (newPassword !== confirmPassword) {
+			setPasswordError('Hasła nie są identyczne')
 			return
 		}
 
-		if (!passwordData.newPassword) {
-			setPasswordError('Wpisz nowe hasło')
-			return
-		}
-
-		if (passwordData.newPassword.length < 6) {
-			setPasswordError('Nowe hasło musi mieć minimum 6 znaków')
-			return
-		}
-
-		if (passwordData.newPassword !== passwordData.confirmPassword) {
-			setPasswordError('Nowe hasła nie są takie same')
-			return
-		}
-
-		if (passwordData.currentPassword === passwordData.newPassword) {
-			setPasswordError('Nowe hasło musi być inne niż obecne')
+		if (newPassword.length < 6) {
+			setPasswordError('Hasło musi mieć minimum 6 znaków')
 			return
 		}
 
 		setPasswordLoading(true)
 
 		try {
-			// 1. Reautentykacja
-			const credential = EmailAuthProvider.credential(currentUser.email, passwordData.currentPassword)
+			// Firebase wymaga ponownego uwierzytelnienia przed zmianą hasła
+			const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('firebase/auth')
+			
+			const credential = EmailAuthProvider.credential(currentUser.email, currentPassword)
 			await reauthenticateWithCredential(currentUser, credential)
+			await updatePassword(currentUser, newPassword)
 
-			// 2. Zmiana hasła
-			await updatePassword(currentUser, passwordData.newPassword)
-
+			alert('✅ Hasło zostało zmienione!')
 			setShowPasswordModal(false)
-			setPasswordData({
-				currentPassword: '',
-				newPassword: '',
-				confirmPassword: ''
-			})
-			showAlert('success', 'Hasło zmienione!', 'Twoje hasło zostało pomyślnie zaktualizowane.')
-
+			setCurrentPassword('')
+			setNewPassword('')
+			setConfirmPassword('')
 		} catch (error) {
 			console.error('Błąd zmiany hasła:', error)
-			
-			if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-				setPasswordError('Nieprawidłowe obecne hasło')
-			} else if (error.code === 'auth/weak-password') {
-				setPasswordError('Nowe hasło jest za słabe')
-			} else if (error.code === 'auth/requires-recent-login') {
-				setPasswordError('Sesja wygasła. Wyloguj się i zaloguj ponownie.')
+			if (error.code === 'auth/wrong-password') {
+				setPasswordError('Nieprawidłowe aktualne hasło')
 			} else {
-				setPasswordError('Wystąpił błąd. Spróbuj ponownie.')
+				setPasswordError('Błąd zmiany hasła: ' + error.message)
 			}
+		} finally {
+			setPasswordLoading(false)
 		}
-
-		setPasswordLoading(false)
 	}
+
+	const hasOwnSubscription = isSubscriptionActive(ownedSubscription)
+	const organizations = userProfile?.organizations || []
+	const maxOrganizations = userProfile?.limits?.maxOrganizations || 1
+
+	// Walidacja formularza usuwania
+	const canDeleteOrg = orgToDelete && 
+		deleteOrgConfirmName === orgToDelete.name && 
+		deleteOrgPassword.length >= 6
 
 	if (loading) {
 		return <div className="settings-loading">Ładowanie ustawień...</div>
 	}
 
-	const subscription = userProfile?.subscription
-
 	return (
 		<div className="settings-page">
 			<div className="settings-header">
 				<h1>⚙️ Ustawienia</h1>
-				<p>Zarządzaj swoim kontem, organizacjami i subskrypcją</p>
+				<p>Zarządzaj swoim kontem i subskrypcją</p>
 			</div>
 
 			<div className="settings-tabs">
@@ -366,6 +524,7 @@ export default function Settings() {
 			</div>
 
 			<div className="settings-content">
+				{/* KONTO */}
 				{activeTab === 'account' && (
 					<div className="settings-section">
 						<h2>Informacje o koncie</h2>
@@ -401,95 +560,106 @@ export default function Settings() {
 						<div className="danger-zone">
 							<h3>Strefa niebezpieczna</h3>
 							<p>Usuń swoje konto na zawsze. Ta akcja jest nieodwracalna.</p>
-							<button className="btn-danger" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Usuwanie konta będzie dostępne wkrótce.')}>
+							<button className="btn-danger" onClick={() => alert('Funkcja wkrótce')}>
 								🗑️ Usuń konto
 							</button>
 						</div>
 					</div>
 				)}
 
+				{/* ORGANIZACJE */}
 				{activeTab === 'organizations' && (
 					<div className="settings-section">
 						<h2>Twoje organizacje</h2>
-						<p className="section-description">
+						<p style={{ color: '#666', marginBottom: '8px' }}>
 							Zarządzaj zespołami do których należysz lub które stworzyłeś.
-							<span style={{ display: 'block', marginTop: '8px', color: '#667eea', fontWeight: '600' }}>
-								Limit organizacji: 15
-							</span>
+						</p>
+						<p style={{ color: '#94c11e', fontWeight: '600', marginBottom: '24px' }}>
+							Limit organizacji: {maxOrganizations === 999 ? 'Nielimitowane' : maxOrganizations}
 						</p>
 
-						{orgsLoading ? (
-							<div className="orgs-loading">Ładowanie organizacji...</div>
-						) : organizationsData.length === 0 ? (
-							<div className="no-organizations">
-								<div className="no-org-icon">🏢</div>
-								<h3>Brak organizacji</h3>
-								<p>Nie należysz jeszcze do żadnej organizacji.</p>
-								<button className="btn-primary" onClick={() => setShowNewOrgModal(true)}>
-									🚀 Utwórz organizację
-								</button>
-							</div>
-						) : (
+						{organizations.length > 0 ? (
 							<div className="organizations-list">
-								{organizationsData.map(org => (
-									<div key={org.id} className={`org-card ${org.isOwner ? 'org-card-owner' : ''}`}>
+								{organizations.map((org) => (
+									<div key={org.id} className="organization-card">
 										<div className="org-card-header">
+											<div className="org-card-icon">🏢</div>
 											<div className="org-card-info">
 												<h3>{org.name}</h3>
-												<span className={`org-badge ${org.isOwner ? 'badge-owner' : 'badge-member'}`}>
-													{org.isOwner ? '👑 Właściciel' : '👤 Członek'}
+												<span className={`org-role-badge ${org.role === 'Właściciel' ? 'owner' : 'member'}`}>
+													{org.role}
 												</span>
 											</div>
-											<div className="org-card-role">{org.role}</div>
-										</div>
-
-										<div className="org-card-actions">
-											{org.isOwner ? (
-												<>
-													<p className="org-card-warning">
-														⚠️ Jako właściciel możesz usunąć tę organizację. 
-														Wszyscy członkowie stracą dostęp. Twoja subskrypcja pozostanie aktywna.
-													</p>
-													<button 
-														className="btn-danger" 
-														onClick={() => setDeleteModal({ isOpen: true, org })}>
-														🗑️ Usuń zespół
-													</button>
-												</>
-											) : (
-												<>
-													<p className="org-card-info-text">
-														Dołączyłeś do tego zespołu przez zaproszenie. 
-														Możesz opuścić zespół w każdej chwili.
-													</p>
-													<button 
-														className="btn-warning" 
-														onClick={() => setLeaveModal({ isOpen: true, org })}>
-														🚪 Opuść zespół
-													</button>
-												</>
+											{/* Przycisk usuwania - TYLKO dla PRAWDZIWEGO właściciela (sprawdzenie przez ownerId) */}
+											{isRealOwner(org.id) && (
+												<button 
+													className="org-delete-btn"
+													onClick={() => openDeleteOrgModal(org)}
+													title="Usuń organizację"
+												>
+													🗑️
+												</button>
 											)}
+										</div>
+										<div className="org-card-meta">
+											<span>Dołączono: {new Date(org.joinedAt).toLocaleDateString('pl-PL')}</span>
 										</div>
 									</div>
 								))}
 							</div>
+						) : (
+							<div className="no-organizations">
+								<div style={{ fontSize: '64px', marginBottom: '16px' }}>🏢</div>
+								<h3>Brak organizacji</h3>
+								<p>Nie należysz jeszcze do żadnej organizacji.</p>
+							</div>
 						)}
+
+						{/* Przycisk tworzenia organizacji */}
+						<div style={{ marginTop: '24px' }}>
+							{checkingSubscription ? (
+								<p style={{ color: '#666' }}>🔍 Sprawdzam subskrypcję...</p>
+							) : hasOwnSubscription ? (
+								<button 
+									onClick={() => setShowNewOrgModal(true)}
+									className="btn-primary"
+									style={{ 
+										padding: '14px 28px',
+										fontSize: '16px',
+										background: 'linear-gradient(135deg, #94c11e 0%, #7ea518 100%)'
+									}}>
+									🔧 Utwórz organizację
+								</button>
+							) : (
+								<button 
+									onClick={() => navigate('/pricing')}
+									className="btn-primary"
+									style={{ 
+										padding: '14px 28px',
+										fontSize: '16px',
+										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+									}}>
+									💳 Wybierz plan
+								</button>
+							)}
+						</div>
 					</div>
 				)}
 
+				{/* SUBSKRYPCJA */}
 				{activeTab === 'subscription' && (
 					<div className="settings-section">
 						<h2>Twoja subskrypcja</h2>
 
-						{subscription ? (
+						{isSubscriptionActive(userProfile?.subscription) ? (
 							<>
 								<div className="subscription-card">
 									<div className="subscription-header">
-										<h3>Plan subskrypcji</h3>
-										<span className={`subscription-status ${subscription.status}`}>
-											{subscription.status === 'trialing' ? '🎁 Okres próbny' : 
-											 subscription.status === 'active' ? '✅ Aktywna' : 
-											 subscription.status === 'past_due' ? '⚠️ Zaległość' : 
+										<h3>Twój plan</h3>
+										<span className={`subscription-status ${userProfile.subscription.status}`}>
+											{userProfile.subscription.status === 'trialing' ? '🎁 Okres próbny' : 
+											 userProfile.subscription.status === 'active' ? '✅ Aktywna' : 
+											 userProfile.subscription.status === 'past_due' ? '⚠️ Zaległość' : 
 											 '❌ Nieaktywna'}
 										</span>
 									</div>
@@ -498,51 +668,49 @@ export default function Settings() {
 										<div className="detail-row">
 											<span className="detail-label">Plan:</span>
 											<span className="detail-value">
-												{subscription.plan === 'monthly' ? 'Miesięczny' :
-												 subscription.plan === 'semiannual' ? 'Półroczny' :
-												 subscription.plan === 'annual' ? 'Roczny' : 'Nieznany'}
+												{userProfile.subscription.plan === 'monthly' ? 'Miesięczny' :
+												 userProfile.subscription.plan === 'semiannual' ? 'Półroczny' :
+												 userProfile.subscription.plan === 'annual' ? 'Roczny' : 'Nieznany'}
 											</span>
 										</div>
 										<div className="detail-row">
 											<span className="detail-label">Cena:</span>
-											<span className="detail-value">
-												{subscription.price} zł/
-												{subscription.interval === 'month' ? 'miesiąc' : 
-												 subscription.interval === 'half_year' ? 'pół roku' : 'rok'}
-											</span>
+											<span className="detail-value">{userProfile.subscription.price} zł/{userProfile.subscription.interval === 'month' ? 'miesiąc' : 'rok'}</span>
 										</div>
 										<div className="detail-row">
 											<span className="detail-label">Następna płatność:</span>
 											<span className="detail-value">
-												{new Date(subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
+												{new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
 											</span>
 										</div>
-										{subscription.status === 'trialing' && subscription.trialEndsAt && (
+										{userProfile.subscription.status === 'trialing' && (
 											<div className="detail-row">
 												<span className="detail-label">Koniec okresu próbnego:</span>
 												<span className="detail-value">
-													{new Date(subscription.trialEndsAt).toLocaleDateString('pl-PL')}
+													{new Date(userProfile.subscription.trialEndsAt).toLocaleDateString('pl-PL')}
 												</span>
 											</div>
 										)}
 										<div className="detail-row">
 											<span className="detail-label">Limit organizacji:</span>
-											<span className="detail-value">15</span>
+											<span className="detail-value">
+												{userProfile.limits?.maxOrganizations === 999 ? 'Nielimitowane' : userProfile.limits?.maxOrganizations || 1}
+											</span>
 										</div>
 									</div>
 
 									<div className="subscription-actions">
-										<button className="btn-secondary" onClick={() => showAlert('info', 'Funkcja wkrótce', 'Zmiana planu będzie dostępna po integracji ze Stripe.')}>
+										<button className="btn-secondary" onClick={() => alert('Funkcja wkrótce')}>
 											🔄 Zmień plan
 										</button>
-										{!subscription.cancelAtPeriodEnd && (
+										{!userProfile.subscription.cancelAtPeriodEnd && (
 											<button className="btn-danger" onClick={handleCancelSubscription}>
 												🚫 Anuluj subskrypcję
 											</button>
 										)}
-										{subscription.cancelAtPeriodEnd && (
+										{userProfile.subscription.cancelAtPeriodEnd && (
 											<div className="cancel-notice">
-												⚠️ Subskrypcja zostanie anulowana {new Date(subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
+												⚠️ Subskrypcja zostanie anulowana {new Date(userProfile.subscription.currentPeriodEnd).toLocaleDateString('pl-PL')}
 											</div>
 										)}
 									</div>
@@ -555,21 +723,22 @@ export default function Settings() {
 							</>
 						) : (
 							<div className="no-subscription">
-								<div className="no-subscription-icon">💳</div>
-								<h3>Nie masz wykupionej subskrypcji</h3>
-								<p>
-									Dołączyłeś do organizacji przez kod zaproszenia, więc korzystasz z planu właściciela firmy.
-									<br /><br />
-									Jeśli chcesz założyć własną organizację, wykup plan.
+								<div style={{ fontSize: '64px', marginBottom: '16px' }}>💳</div>
+								<h3 style={{ marginBottom: '12px', color: '#243c4c' }}>Nie masz własnej subskrypcji</h3>
+								<p style={{ marginBottom: '24px' }}>
+									Korzystasz z dostępu do organizacji innego użytkownika.
+									<br />
+									Aby utworzyć własną organizację, kup plan.
 								</p>
-								<button className="btn-primary" onClick={() => window.location.href = '/pricing'}>
-									🚀 Kup własny plan
+								<button className="btn-primary" onClick={() => navigate('/pricing')}>
+									💳 Wybierz plan
 								</button>
 							</div>
 						)}
 					</div>
 				)}
 
+				{/* BEZPIECZEŃSTWO - tylko zmiana hasła */}
 				{activeTab === 'security' && (
 					<div className="settings-section">
 						<h2>Bezpieczeństwo</h2>
@@ -577,16 +746,8 @@ export default function Settings() {
 						<div className="security-item">
 							<h3>Zmiana hasła</h3>
 							<p>Zaktualizuj swoje hasło aby zachować bezpieczeństwo konta</p>
-							<button className="btn-secondary" onClick={handleOpenPasswordModal}>
+							<button className="btn-secondary" onClick={() => setShowPasswordModal(true)}>
 								🔑 Zmień hasło
-							</button>
-						</div>
-
-						<div className="security-item danger">
-							<h3>Wyloguj się</h3>
-							<p>Wyloguj się z tego urządzenia</p>
-							<button className="btn-danger" onClick={logout}>
-								🚪 Wyloguj
 							</button>
 						</div>
 					</div>
@@ -595,121 +756,30 @@ export default function Settings() {
 
 			{/* MODAL TWORZENIA ORGANIZACJI */}
 			{showNewOrgModal && (
-				<div className="confirm-modal-overlay" onClick={() => setShowNewOrgModal(false)}>
-					<div className="confirm-modal confirm-modal-info" onClick={(e) => e.stopPropagation()}>
-						<div className="confirm-modal-icon">🏢</div>
-						<h2 className="confirm-modal-title">Utwórz nową firmę</h2>
-						<p className="confirm-modal-message">
-							Dodaj organizację do swojego konta
-							<span style={{ display: 'block', marginTop: '8px', color: '#667eea', fontWeight: '600' }}>
-								Limit: 15 organizacji
-							</span>
+				<div className="modal-overlay" onClick={() => setShowNewOrgModal(false)}>
+					<div className="modal-card" onClick={(e) => e.stopPropagation()}>
+						<h2>🏢 Utwórz nową firmę</h2>
+						<p style={{ color: '#6c757d', fontSize: '14px', marginBottom: '20px' }}>
+							Dodaj nową organizację do swojego konta
 						</p>
 
 						<form onSubmit={handleCreateNewOrg}>
-							<div className="confirm-modal-input-group">
-								<label>Nazwa firmy:</label>
-								<input
-									type="text"
-									placeholder="np. Palety Kowalski"
-									value={newOrgName}
-									onChange={(e) => setNewOrgName(e.target.value)}
-									className="confirm-modal-input"
-									required
-									autoFocus
-								/>
-							</div>
+							<input
+								type="text"
+								placeholder="Nazwa firmy"
+								value={newOrgName}
+								onChange={(e) => setNewOrgName(e.target.value)}
+								className="modal-input"
+								required
+								autoFocus
+							/>
 
-							<div className="confirm-modal-actions">
-								<button 
-									type="button" 
-									className="confirm-modal-btn confirm-modal-btn-cancel" 
-									onClick={() => setShowNewOrgModal(false)}>
-									Anuluj
-								</button>
-								<button 
-									type="submit" 
-									className="confirm-modal-btn confirm-modal-btn-primary" 
-									disabled={newOrgLoading}>
+							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+								<button type="submit" className="modal-btn-primary" disabled={newOrgLoading}>
 									{newOrgLoading ? 'Tworzenie...' : 'Utwórz'}
 								</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
-
-			{/* MODAL ZMIANY HASŁA */}
-			{showPasswordModal && (
-				<div className="confirm-modal-overlay" onClick={() => setShowPasswordModal(false)}>
-					<div className="confirm-modal confirm-modal-info" onClick={(e) => e.stopPropagation()}>
-						<div className="confirm-modal-icon">🔑</div>
-						<h2 className="confirm-modal-title">Zmień hasło</h2>
-						<p className="confirm-modal-message">
-							Wprowadź obecne hasło oraz nowe hasło
-						</p>
-
-						<form onSubmit={handleChangePassword}>
-							<div className="confirm-modal-input-group">
-								<label>Obecne hasło:</label>
-								<input
-									type="password"
-									name="currentPassword"
-									placeholder="Wpisz obecne hasło"
-									value={passwordData.currentPassword}
-									onChange={handlePasswordChange}
-									className="confirm-modal-input"
-									required
-									autoFocus
-								/>
-							</div>
-
-							<div className="confirm-modal-input-group">
-								<label>Nowe hasło:</label>
-								<input
-									type="password"
-									name="newPassword"
-									placeholder="Minimum 6 znaków"
-									value={passwordData.newPassword}
-									onChange={handlePasswordChange}
-									className="confirm-modal-input"
-									required
-									minLength={6}
-								/>
-							</div>
-
-							<div className="confirm-modal-input-group">
-								<label>Potwierdź nowe hasło:</label>
-								<input
-									type="password"
-									name="confirmPassword"
-									placeholder="Powtórz nowe hasło"
-									value={passwordData.confirmPassword}
-									onChange={handlePasswordChange}
-									className="confirm-modal-input"
-									required
-								/>
-							</div>
-
-							{passwordError && (
-								<div className="confirm-modal-error">
-									❌ {passwordError}
-								</div>
-							)}
-
-							<div className="confirm-modal-actions">
-								<button 
-									type="button" 
-									className="confirm-modal-btn confirm-modal-btn-cancel" 
-									onClick={() => setShowPasswordModal(false)}
-									disabled={passwordLoading}>
+								<button type="button" className="modal-btn-secondary" onClick={() => { setShowNewOrgModal(false); setNewOrgName('') }}>
 									Anuluj
-								</button>
-								<button 
-									type="submit" 
-									className="confirm-modal-btn confirm-modal-btn-primary" 
-									disabled={passwordLoading}>
-									{passwordLoading ? 'Zmieniam...' : '🔐 Zmień hasło'}
 								</button>
 							</div>
 						</form>
@@ -718,46 +788,148 @@ export default function Settings() {
 			)}
 
 			{/* MODAL USUWANIA ORGANIZACJI */}
-			{deleteModal.isOpen && deleteModal.org && (
-				<ConfirmModal
-					isOpen={deleteModal.isOpen}
-					onClose={() => setDeleteModal({ isOpen: false, org: null })}
-					onConfirm={handleDeleteOrganization}
-					title="Usuń organizację"
-					message={`Ta akcja jest nieodwracalna! Wszystkie dane organizacji "${deleteModal.org.name}" zostaną usunięte. Wszyscy członkowie stracą dostęp. Twoja subskrypcja pozostanie aktywna.`}
-					confirmText="🗑️ Usuń organizację"
-					cancelText="Anuluj"
-					type="danger"
-					requirePassword={true}
-					requireTextConfirm={deleteModal.org.name}
-					loading={deleteLoading}
-				/>
+			{showDeleteOrgModal && orgToDelete && (
+				<div className="modal-overlay" onClick={closeDeleteOrgModal}>
+					<div className="modal-card modal-card-danger" onClick={(e) => e.stopPropagation()}>
+						<h2>🗑️ Usuń organizację</h2>
+						
+						<div className="delete-warning">
+							<p><strong>⚠️ UWAGA!</strong> Ta operacja jest <strong>nieodwracalna</strong>.</p>
+							<p>Usunięte zostaną:</p>
+							<ul>
+								<li>Wszystkie zamówienia</li>
+								<li>Wszystkie typy produktów</li>
+								<li>Wszystkie kody zaproszenia</li>
+								<li>Wszyscy członkowie stracą dostęp</li>
+							</ul>
+							<p style={{ color: '#28a745', fontWeight: '600' }}>
+								✅ Twoja subskrypcja pozostanie aktywna
+							</p>
+						</div>
+
+						<div className="delete-form">
+							<div className="delete-form-group">
+								<label>
+									Wpisz nazwę organizacji: <strong style={{ color: '#dc3545' }}>{orgToDelete.name}</strong>
+								</label>
+								<input
+									type="text"
+									placeholder="Wpisz nazwę organizacji"
+									value={deleteOrgConfirmName}
+									onChange={(e) => setDeleteOrgConfirmName(e.target.value)}
+									className="modal-input"
+								/>
+								{deleteOrgConfirmName && deleteOrgConfirmName !== orgToDelete.name && (
+									<small className="field-error">Nazwa nie zgadza się</small>
+								)}
+								{deleteOrgConfirmName === orgToDelete.name && (
+									<small className="field-success">✓ Nazwa poprawna</small>
+								)}
+							</div>
+
+							<div className="delete-form-group">
+								<label>
+									Wpisz swoje hasło do konta:
+								</label>
+								<input
+									type="password"
+									placeholder="Twoje hasło"
+									value={deleteOrgPassword}
+									onChange={(e) => setDeleteOrgPassword(e.target.value)}
+									className="modal-input"
+								/>
+							</div>
+						</div>
+
+						{deleteOrgError && (
+							<div className="delete-error">
+								{deleteOrgError}
+							</div>
+						)}
+
+						<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+							<button 
+								type="button" 
+								className="modal-btn-danger" 
+								disabled={deletingOrg || !canDeleteOrg}
+								onClick={handleDeleteOrganization}
+							>
+								{deletingOrg ? 'Usuwanie...' : '🗑️ Usuń organizację'}
+							</button>
+							<button 
+								type="button" 
+								className="modal-btn-secondary" 
+								onClick={closeDeleteOrgModal}
+							>
+								Anuluj
+							</button>
+						</div>
+					</div>
+				</div>
 			)}
 
-			{/* MODAL OPUSZCZANIA ORGANIZACJI */}
-			{leaveModal.isOpen && leaveModal.org && (
-				<ConfirmModal
-					isOpen={leaveModal.isOpen}
-					onClose={() => setLeaveModal({ isOpen: false, org: null })}
-					onConfirm={handleLeaveOrganization}
-					title="Opuść zespół"
-					message={`Czy na pewno chcesz opuścić zespół "${leaveModal.org.name}"? Stracisz dostęp do wszystkich danych tej organizacji. Aby wrócić, będziesz potrzebował nowego zaproszenia.`}
-					confirmText="🚪 Opuść zespół"
-					cancelText="Anuluj"
-					type="warning"
-					requirePassword={true}
-					loading={leaveLoading}
-				/>
-			)}
+			{/* MODAL ZMIANY HASŁA */}
+			{showPasswordModal && (
+				<div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+					<div className="modal-card" onClick={(e) => e.stopPropagation()}>
+						<h2>🔑 Zmień hasło</h2>
+						<p style={{ color: '#6c757d', fontSize: '14px', marginBottom: '20px' }}>
+							Wpisz aktualne hasło i nowe hasło
+						</p>
 
-			{/* ALERT MODAL */}
-			<AlertModal
-				isOpen={alert.isOpen}
-				onClose={() => setAlert({ ...alert, isOpen: false })}
-				title={alert.title}
-				message={alert.message}
-				type={alert.type}
-			/>
+						<form onSubmit={handleChangePassword}>
+							<input
+								type="password"
+								placeholder="Aktualne hasło"
+								value={currentPassword}
+								onChange={(e) => setCurrentPassword(e.target.value)}
+								className="modal-input"
+								style={{ marginBottom: '12px' }}
+								required
+								autoFocus
+							/>
+							<input
+								type="password"
+								placeholder="Nowe hasło"
+								value={newPassword}
+								onChange={(e) => setNewPassword(e.target.value)}
+								className="modal-input"
+								style={{ marginBottom: '12px' }}
+								required
+							/>
+							<input
+								type="password"
+								placeholder="Potwierdź nowe hasło"
+								value={confirmPassword}
+								onChange={(e) => setConfirmPassword(e.target.value)}
+								className="modal-input"
+								required
+							/>
+
+							{passwordError && (
+								<div style={{ padding: '12px', background: '#fee', color: '#c00', borderRadius: '8px', fontSize: '14px', marginTop: '12px' }}>
+									{passwordError}
+								</div>
+							)}
+
+							<div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+								<button type="submit" className="modal-btn-primary" disabled={passwordLoading}>
+									{passwordLoading ? 'Zmieniam...' : 'Zmień hasło'}
+								</button>
+								<button type="button" className="modal-btn-secondary" onClick={() => { 
+									setShowPasswordModal(false)
+									setCurrentPassword('')
+									setNewPassword('')
+									setConfirmPassword('')
+									setPasswordError('')
+								}}>
+									Anuluj
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

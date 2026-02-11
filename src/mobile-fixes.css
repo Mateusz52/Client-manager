@@ -1,0 +1,206 @@
+/* ============================================
+   MOBILE FIXES - Karty zamówień
+   ============================================ */
+
+/* Fix dla szczegółów zamówienia na mobile */
+@media (max-width: 768px) {
+	/* Główny kontener szczegółów - zawsze kolumna */
+	.card-details {
+		display: flex;
+		flex-direction: column !important;
+		gap: 16px;
+		width: 100%;
+		overflow-x: hidden;
+	}
+
+	/* Sekcje szczegółów - pełna szerokość */
+	.card-detail-section {
+		width: 100% !important;
+		max-width: 100% !important;
+		flex: none !important;
+		box-sizing: border-box;
+	}
+
+	/* Dodatkowe produkty - pełna szerokość, kolumna */
+	.card-linked-products {
+		width: 100% !important;
+		max-width: 100% !important;
+		display: flex;
+		flex-direction: column !important;
+		gap: 12px;
+		margin-top: 16px;
+		padding-top: 16px;
+		border-top: 2px dashed #e0e0e0;
+	}
+
+	.card-linked-products h4 {
+		font-size: 16px;
+		color: #667eea;
+		margin: 0 0 12px 0;
+	}
+
+	/* Pojedynczy dodatkowy produkt */
+	.card-linked-product-item {
+		background: #f8f9fa;
+		border: 1px solid #e8e8e8;
+		border-radius: 12px;
+		padding: 16px;
+		width: 100% !important;
+		box-sizing: border-box;
+	}
+
+	.card-linked-product-item h5 {
+		font-size: 15px;
+		font-weight: 700;
+		color: #243c4c;
+		margin: 0 0 12px 0;
+		padding-bottom: 8px;
+		border-bottom: 1px solid #e8e8e8;
+	}
+
+	/* Elementy szczegółów */
+	.card-detail-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 8px 0;
+		border-bottom: 1px solid #f0f0f0;
+		font-size: 14px;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+
+	.card-detail-item:last-child {
+		border-bottom: none;
+	}
+
+	.card-detail-item span {
+		color: #6c757d;
+		flex-shrink: 0;
+	}
+
+	.card-detail-item strong {
+		color: #243c4c;
+		text-align: right;
+		word-break: break-word;
+	}
+
+	/* Highlight wartości */
+	.highlight-value {
+		color: #667eea !important;
+		font-weight: 700;
+	}
+
+	/* Parametry produktu */
+	.card-product-params {
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px dashed #dee2e6;
+	}
+
+	.card-product-params > strong {
+		display: block;
+		font-size: 13px;
+		color: #6c757d;
+		margin-bottom: 8px;
+	}
+
+	.card-param-item {
+		display: flex;
+		justify-content: space-between;
+		font-size: 13px;
+		padding: 4px 0;
+		color: #495057;
+	}
+
+	/* Załączniki na mobile */
+	.card-attachments {
+		width: 100% !important;
+		margin-top: 16px;
+		padding-top: 16px;
+		border-top: 2px dashed #e0e0e0;
+	}
+
+	.card-attachments-list {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.card-attachment-item {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		background: #f8f9fa;
+		padding: 12px;
+		border-radius: 8px;
+	}
+
+	.card-attachment-preview img {
+		width: 60px;
+		height: 60px;
+		object-fit: cover;
+		border-radius: 8px;
+	}
+
+	.card-attachment-icon {
+		width: 50px;
+		height: 50px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 28px;
+		background: white;
+		border-radius: 8px;
+	}
+
+	.card-attachment-info {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.card-attachment-name {
+		font-size: 13px;
+		font-weight: 600;
+		color: #243c4c;
+		word-break: break-word;
+		margin-bottom: 4px;
+	}
+
+	.card-attachment-download {
+		font-size: 12px;
+		color: #667eea;
+		text-decoration: none;
+	}
+
+	/* Karta zamówienia - ogólne */
+	.order-card {
+		overflow: hidden;
+	}
+
+	.card-body {
+		padding: 16px;
+	}
+
+	.card-product-type {
+		font-size: 18px;
+		word-break: break-word;
+	}
+}
+
+/* Bardzo małe ekrany */
+@media (max-width: 400px) {
+	.card-detail-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+	}
+
+	.card-detail-item strong {
+		text-align: left;
+	}
+
+	.card-linked-product-item {
+		padding: 12px;
+	}
+}

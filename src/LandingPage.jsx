@@ -5,7 +5,7 @@ import './LandingPage.css'
 export default function LandingPage() {
 	const [lightboxImage, setLightboxImage] = useState(null)
 
-	const openLightbox = (imageSrc) => {
+	const openLightbox = imageSrc => {
 		setLightboxImage(imageSrc)
 		document.body.style.overflow = 'hidden'
 	}
@@ -178,8 +178,8 @@ export default function LandingPage() {
 								<div className='step-number'>01</div>
 								<h3>Zacznij od gotowego szablonu</h3>
 								<p>
-									Wybierz szablon produktu z biblioteki lub stwórz własny. Palety EUR, niestandardowe, deski - masz pełną
-									swobodę. System podpowie Ci jakie parametry dodać.
+									Wybierz szablon produktu z biblioteki lub stwórz własny. Palety EUR, niestandardowe, deski - masz
+									pełną swobodę. System podpowie Ci jakie parametry dodać.
 								</p>
 							</div>
 						</div>
@@ -246,8 +246,8 @@ export default function LandingPage() {
 								<div className='step-number'>05</div>
 								<h3>Analizuj i optymalizuj</h3>
 								<p>
-									Zobacz które produkty przynoszą największy zysk. Sprawdź ilości, wartości, porównaj sprzedaż z zakupem.
-									Wszystko w przejrzystych zestawieniach - bez skomplikowanych raportów.
+									Zobacz które produkty przynoszą największy zysk. Sprawdź ilości, wartości, porównaj sprzedaż z
+									zakupem. Wszystko w przejrzystych zestawieniach - bez skomplikowanych raportów.
 								</p>
 							</div>
 						</div>
@@ -463,15 +463,8 @@ export default function LandingPage() {
 
 						<div className='footer-column'>
 							<h4>Prawne</h4>
-							<a
-								href='#'
-								onClick={e => {
-									e.preventDefault()
-									alert('Polityka prywatności - wkrótce')
-								}}>
-								Polityka prywatności
-							</a>
-							<Link to='/regulamin'>Regulamin</Link>
+							<Link to='/privacy-policy'>Polityka prywatności</Link>
+							<Link to='/terms'>Regulamin</Link>
 						</div>
 
 						<div className='footer-column'>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import './CookieConsent.css'
 
 export default function CookieConsent() {
@@ -80,13 +81,13 @@ export default function CookieConsent() {
 						</div>
 
 						<div className="cookie-footer">
-							<a href="#" onClick={(e) => { e.preventDefault(); alert('Polityka prywatności - wkrótce') }}>
+							<Link to="/privacy-policy">
 								Polityka prywatności
-							</a>
+							</Link>
 							{' • '}
-							<a href="#" onClick={(e) => { e.preventDefault(); alert('Polityka cookies - wkrótce') }}>
+							<Link to="/privacy-policy">
 								Polityka cookies
-							</a>
+							</Link>
 						</div>
 					</>
 				) : (

@@ -26,7 +26,7 @@ export default function Header({ onStatsClick, onConfigClick, onTeamClick, onLog
 			<header className='header-minimal'>
 				<div className='header-minimal-content'>
 					<div className='header-minimal-title'>
-						<h1>CLIENT MANAGER</h1>
+						<h1>ORDER MANAGER</h1>
 						<span className='header-minimal-subtitle'>Panel zarządzania</span>
 					</div>
 					
